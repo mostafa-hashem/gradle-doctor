@@ -282,6 +282,7 @@
                                 <ComboBox x:Name="DefaultTargetBox" Grid.Column="1"
                                           ToolTip="Default Gradle version used for new scans"
                                           AutomationProperties.Name="Default Gradle version"
+                                          SelectionChanged="DefaultTargetBox_SelectionChanged"
                                           ItemTemplate="{StaticResource VersionOptionTemplate}" />
                                 <Button x:Name="UseDefaultBtn" Grid.Column="2" Content="Use as target for selected"
                                         Margin="8,0,0,0" Padding="12,6" Click="UseDefault_Click" />
@@ -325,7 +326,9 @@
                             <TextBlock Text="Target Gradle" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"
                                        VerticalAlignment="Center" Margin="0,0,8,0" />
                             <TextBox x:Name="TargetBox" Width="104" Padding="8,6" FontFamily="{DynamicResource MonoFont}"
-                                     ToolTip="Target Gradle version, e.g. 9.8.2" />
+                                     ToolTip="Target Gradle version, e.g. 9.8.2"
+                                     LostFocus="TargetBox_LostFocus"
+                                     KeyDown="TargetBox_KeyDown" />
                             <ComboBox x:Name="VersionPicker" Width="150" Margin="6,0,0,0"
                                       SelectionChanged="VersionPicker_SelectionChanged"
                                       AutomationProperties.Name="Gradle version picker"
@@ -412,6 +415,7 @@
                                           ScrollViewer.HorizontalScrollBarVisibility="Auto"
                                           ScrollViewer.VerticalScrollBarVisibility="Auto"
                                           SelectionChanged="ProjectsGrid_SelectionChanged"
+                                          CellEditEnding="ProjectsGrid_CellEditEnding"
                                           MouseDoubleClick="ProjectsGrid_MouseDoubleClick">
                                     <DataGrid.Columns>
                                         <DataGridTemplateColumn Header="" Width="42" MinWidth="42">
@@ -681,9 +685,15 @@
                 <Grid Grid.Row="5" Margin="0,2,0,2">
                     <Border Height="1" Background="{DynamicResource TerminalSplitterBrush}"
                             VerticalAlignment="Center" HorizontalAlignment="Stretch" />
-                    <GridSplitter x:Name="TerminalSplitter" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
-                                  Background="Transparent" ResizeBehavior="PreviousAndNext" ResizeDirection="Rows"
-                                  Cursor="SizeNS" ToolTip="Drag to resize the log" />
+                    <Thumb x:Name="TerminalSplitter" Height="9" HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                           Background="Transparent" Cursor="SizeNS" DragDelta="TerminalSplitter_DragDelta"
+                           ToolTip="Drag to resize the log">
+                        <Thumb.Template>
+                            <ControlTemplate TargetType="Thumb">
+                                <Border Background="Transparent" />
+                            </ControlTemplate>
+                        </Thumb.Template>
+                    </Thumb>
                 </Grid>
 
                 <!-- Terminal -->
@@ -751,22 +761,62 @@
                 </Grid>
             </Grid>
 
-            <!-- Loading overlay -->
-            <Border x:Name="BusyOverlay" Grid.RowSpan="2" Background="{DynamicResource OverlayBrush}"
-                    Visibility="Collapsed" Panel.ZIndex="50" IsHitTestVisible="True">
-                <Border Background="{DynamicResource CardBgBrush}" BorderBrush="{DynamicResource CardBorderBrush}"
-                        BorderThickness="1" CornerRadius="12" Padding="22,18" Width="360"
-                        HorizontalAlignment="Center" VerticalAlignment="Center" Effect="{StaticResource CardShadow}">
+            <!-- Loading overlay / Floating progress card -->
+            <Grid x:Name="BusyOverlay" Grid.RowSpan="2" Background="Transparent"
+                  Visibility="Collapsed" Panel.ZIndex="50" IsHitTestVisible="False">
+                <Border x:Name="BusyCard" Background="{DynamicResource CardBgBrush}" BorderBrush="{DynamicResource CardBorderBrush}"
+                        BorderThickness="1" CornerRadius="12" Padding="20,16" Width="410"
+                        HorizontalAlignment="Center" VerticalAlignment="Center" Effect="{StaticResource CardShadow}"
+                        IsHitTestVisible="True" MouseLeftButtonDown="BusyCard_MouseLeftButtonDown"
+                        MouseMove="BusyCard_MouseMove" MouseLeftButtonUp="BusyCard_MouseLeftButtonUp">
+                    <Border.RenderTransform>
+                        <TranslateTransform x:Name="BusyCardTransform" />
+                    </Border.RenderTransform>
                     <StackPanel>
-                        <TextBlock x:Name="BusyText" Text="Working..." FontSize="13" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center" />
-                        <ProgressBar x:Name="BusyProgress" Style="{StaticResource ModernProgressBarStyle}"
-                                     IsIndeterminate="True" Margin="0,12,0,12" />
-                        <Button x:Name="CancelBtn" Content="Cancel" HorizontalAlignment="Center" Padding="16,6"
-                                Click="Cancel_Click" />
+                        <!-- Header with title and minimize button -->
+                        <Grid Margin="0,0,0,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="M 12 2 C 8.13 2 5 5.13 5 9 C 5 14.25 12 22 12 22 C 12 22 19 14.25 19 9 C 19 5.13 15.87 2 12 2 Z"
+                                      Fill="{DynamicResource PrimaryBrush}" Width="12" Height="12" Stretch="Uniform"
+                                      Margin="0,0,8,0" VerticalAlignment="Center" />
+                                <TextBlock x:Name="BusyText" Text="Working..." FontSize="13" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <Button x:Name="BusyMiniToggleBtn" Grid.Column="1" Content="&#xE921;" FontFamily="Segoe MDL2 Assets"
+                                    Style="{StaticResource GhostButtonStyle}" Width="26" Height="26" Padding="0"
+                                    Click="BusyMiniToggle_Click" ToolTip="Minimize / Expand progress card" Cursor="Arrow" />
+                        </Grid>
+
+                        <!-- Body (collapsible) -->
+                        <StackPanel x:Name="BusyExpandedContent">
+                            <TextBlock x:Name="BusyDetailText" Text="" FontSize="11"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       Margin="0,2,0,8" TextTrimming="CharacterEllipsis" MaxWidth="370"
+                                       Visibility="Collapsed" />
+                            <Grid Margin="0,4,0,4">
+                                <ProgressBar x:Name="BusyProgress" Style="{StaticResource ModernProgressBarStyle}"
+                                             Height="8" Minimum="0" Maximum="100" Value="0" IsIndeterminate="True" />
+                            </Grid>
+                            <Grid Margin="0,2,0,10">
+                                <TextBlock x:Name="BusyCountText" Text="" FontSize="10.5"
+                                           Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Left"
+                                           Visibility="Collapsed" />
+                                <TextBlock x:Name="BusyPercentText" Text="" FontSize="10.5" FontWeight="Bold"
+                                           Foreground="{DynamicResource PrimaryBrush}" HorizontalAlignment="Right"
+                                           Visibility="Collapsed" />
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Footer -->
+                        <Button x:Name="CancelBtn" Content="Cancel" HorizontalAlignment="Center" Padding="16,5"
+                                Margin="0,2,0,0" Click="Cancel_Click" Cursor="Arrow" />
                     </StackPanel>
                 </Border>
-            </Border>
+            </Grid>
 
             <local:ToastHost x:Name="ToastHostControl" Grid.RowSpan="2" Panel.ZIndex="100"
                              HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,26,54" />

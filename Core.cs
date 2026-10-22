@@ -34,7 +34,7 @@ public class ProjectInfo : INotifyPropertyChanged
     }
 
     bool _selected = true;
-    string _current = "?", _target = "", _targetAgp = "", _status = "", _warning = "";
+    string _current = "?", _target = "", _targetAgp = "", _status = "", _warning = "", _distType = "bin";
 
     public bool Selected { get => _selected; set => Set(ref _selected, value); }
     public string Name { get; set; } = "";
@@ -47,6 +47,7 @@ public class ProjectInfo : INotifyPropertyChanged
     public string TargetAgp { get => _targetAgp; set => Set(ref _targetAgp, value); }
     public string Status { get => _status; set => Set(ref _status, value); }
     public string Warning { get => _warning; set => Set(ref _warning, value); }
+    public string DistributionType { get => _distType; set => Set(ref _distType, value); }
 }
 
 public record CleanItem(string Path, string Kind, string Version, long Size)
@@ -312,6 +313,17 @@ public static class ProjectScanner
         return "?";
     }
 
+    public static string ReadDistributionType(string propsFile)
+    {
+        try
+        {
+            var m = VersionRx.Match(File.ReadAllText(propsFile));
+            if (m.Success && m.Groups["t"].Success) return m.Groups["t"].Value.ToLowerInvariant();
+        }
+        catch { }
+        return "bin";
+    }
+
     static ProjectInfo Read(string dir, string props, bool isFlutter = false, string? flutterAppName = null)
     {
         var info = new ProjectInfo { Path = dir, PropsFile = props };
@@ -330,6 +342,7 @@ public static class ProjectScanner
             info.Name = flutterDetected ? parent!.Name : System.IO.Path.GetFileName(dir);
         }
         info.CurrentGradle = ReadVersion(props);
+        info.DistributionType = ReadDistributionType(props);
         info.Agp = AgpResolver.Detect(dir)?.Version ?? "-";
         return info;
     }
@@ -354,6 +367,7 @@ public static class ProjectScanner
         if (!File.Exists(BakPath(p))) File.Copy(p.PropsFile, BakPath(p));
         File.WriteAllText(p.PropsFile, updated);
         p.CurrentGradle = target;
+        p.DistributionType = ReadDistributionType(p.PropsFile);
         return true;
     }
 

@@ -552,7 +552,7 @@
             <Setter.Value>
                 <ControlTemplate TargetType="ProgressBar">
                     <Border Background="{TemplateBinding Background}" CornerRadius="4" ClipToBounds="True">
-                        <Grid>
+                        <Grid x:Name="PART_Track">
                             <Border x:Name="PART_Indicator" Background="{DynamicResource AccentGradientBrush}"
                                     CornerRadius="4" HorizontalAlignment="Left" />
                         </Grid>
@@ -566,7 +566,7 @@
                                 </Setter.Value>
                             </Setter>
                             <Trigger.EnterActions>
-                                <BeginStoryboard>
+                                <BeginStoryboard x:Name="IndeterminateStoryboard">
                                     <Storyboard RepeatBehavior="Forever">
                                         <DoubleAnimation Storyboard.TargetName="PART_Indicator"
                                                          Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
@@ -574,6 +574,9 @@
                                     </Storyboard>
                                 </BeginStoryboard>
                             </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <StopStoryboard BeginStoryboardName="IndeterminateStoryboard" />
+                            </Trigger.ExitActions>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

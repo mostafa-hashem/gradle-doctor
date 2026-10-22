@@ -65,18 +65,33 @@ public static class GradleVersionService
         }
     }
 
-    public static async Task<string?> GetChecksumAsync(string version, CancellationToken ct = default)
+    public static async Task<string?> GetChecksumAsync(string version, string distType = "bin", CancellationToken ct = default)
     {
         try
         {
-            var versions = await GetVersionsAsync(false, ct);
-            var release = versions.FirstOrDefault(v => v.Version == version);
-            var url = release?.ChecksumUrl ?? $"{DistributionsUrl}/gradle-{version}-bin.zip.sha256";
-            var text = (await Http.GetStringAsync(url, ct)).Trim();
+            distType = string.Equals(distType, "all", StringComparison.OrdinalIgnoreCase) ? "all" : "bin";
+            string url;
+            if (distType == "bin")
+            {
+                var versions = await GetVersionsAsync(false, ct);
+                var release = versions.FirstOrDefault(v => v.Version == version);
+                url = release?.ChecksumUrl ?? $"{DistributionsUrl}/gradle-{version}-bin.zip.sha256";
+            }
+            else
+            {
+                url = $"{DistributionsUrl}/gradle-{version}-all.zip.sha256";
+            }
+
+            using var response = await Http.GetAsync(url, ct);
+            if (!response.IsSuccessStatusCode) return null;
+            var text = (await response.Content.ReadAsStringAsync(ct)).Trim();
             return text.Length >= 64 ? text[..64] : null;
         }
         catch { return null; }
     }
+
+    public static Task<string?> GetChecksumAsync(string version, CancellationToken ct) =>
+        GetChecksumAsync(version, "bin", ct);
 
     public static async Task<(bool Ok, string Message, string? File)> DownloadDistributionAsync(
         string version, string destinationDirectory, IProgress<string>? progress = null,

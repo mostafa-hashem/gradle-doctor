@@ -87,6 +87,35 @@ public class ProjectScannerTests
         Assert.Equal("8.6", project.CurrentGradle);
     }
 
+    [Fact]
+    public void ReadDistributionTypeDetectsAllAndBin()
+    {
+        using var temp = new TempDirectory();
+        var propsBin = WriteWrapper(Path.Combine(temp.Path, "bin_proj"), Gradle86);
+        var propsAll = WriteWrapper(Path.Combine(temp.Path, "all_proj"),
+            "distributionUrl=https\\://services.gradle.org/distributions/gradle-8.6-all.zip\n");
+
+        Assert.Equal("bin", ProjectScanner.ReadDistributionType(propsBin));
+        Assert.Equal("all", ProjectScanner.ReadDistributionType(propsAll));
+    }
+
+    [Fact]
+    public void UpdateWrapperPreservesAllDistributionType()
+    {
+        using var temp = new TempDirectory();
+        var props = WriteWrapper(temp.Path, "distributionUrl=https\\://services.gradle.org/distributions/gradle-8.3-all.zip\n");
+        var project = new ProjectInfo { Path = temp.Path, PropsFile = props, CurrentGradle = "8.3", DistributionType = "all" };
+        var checksum = new string('b', 64);
+
+        Assert.True(ProjectScanner.UpdateWrapper(project, "9.6.1", checksum));
+
+        var updated = File.ReadAllText(props);
+        Assert.Contains("gradle-9.6.1-all.zip", updated);
+        Assert.Contains("distributionSha256Sum=" + checksum, updated);
+        Assert.Equal("9.6.1", project.CurrentGradle);
+        Assert.Equal("all", project.DistributionType);
+    }
+
     static string WriteWrapper(string root, string contents)
     {
         var wrapper = Path.Combine(root, "gradle", "wrapper");

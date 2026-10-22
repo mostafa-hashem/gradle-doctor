@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Interop;
@@ -30,11 +31,17 @@ public partial class MainWindow : Window
     bool _scanned;
     bool _busy;
     bool _loadingUi;
+    bool _syncingTarget;
     bool _detailsVisible = true;
     bool _terminalCollapsed;
     bool _terminalAutoCollapsed;
     double _terminalHeight = 170;
     const double TerminalCollapsedHeight = 42;
+    bool _isDraggingCard;
+    Point _dragStartPoint;
+    double _dragStartX;
+    double _dragStartY;
+    bool _busyCardMinimized;
 
     public MainWindow()
     {
@@ -304,12 +311,108 @@ public partial class MainWindow : Window
         try { StatusDot.SetResourceReference(Shape.FillProperty, brushKey); } catch { }
     }
 
-    void SetBusy(bool busy, string text = "Working...")
+    void SetBusy(bool busy, string text = "Working...", bool isIndeterminate = true, double percent = 0, string? detail = null, string? countText = null)
     {
         _busy = busy;
         BusyText.Text = text;
+        BusyDetailText.Text = detail ?? "";
+        BusyDetailText.Visibility = string.IsNullOrWhiteSpace(detail) ? Visibility.Collapsed : Visibility.Visible;
+        BusyProgress.IsIndeterminate = isIndeterminate;
+        if (!isIndeterminate)
+        {
+            BusyProgress.Value = Math.Clamp(percent, 0, 100);
+            BusyPercentText.Text = $"{(int)percent}%";
+            BusyPercentText.Visibility = Visibility.Visible;
+            BusyCountText.Text = countText ?? "";
+            BusyCountText.Visibility = string.IsNullOrWhiteSpace(countText) ? Visibility.Collapsed : Visibility.Visible;
+        }
+        else
+        {
+            BusyPercentText.Visibility = Visibility.Collapsed;
+            BusyCountText.Visibility = Visibility.Collapsed;
+        }
+
+        if (busy)
+        {
+            BusyExpandedContent.Visibility = _busyCardMinimized ? Visibility.Collapsed : Visibility.Visible;
+            BusyCard.Width = _busyCardMinimized ? 280 : 410;
+        }
+        else
+        {
+            BusyCardTransform.X = 0;
+            BusyCardTransform.Y = 0;
+        }
+
         BusyOverlay.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
         UpdateButtonStates();
+    }
+
+    void SetProgress(double percent, string? detail = null, string? countText = null)
+    {
+        BusyProgress.IsIndeterminate = false;
+        BusyProgress.Value = Math.Clamp(percent, 0, 100);
+        BusyPercentText.Text = $"{(int)percent}%";
+        BusyPercentText.Visibility = Visibility.Visible;
+        if (detail != null)
+        {
+            BusyDetailText.Text = detail;
+            BusyDetailText.Visibility = Visibility.Visible;
+        }
+        if (countText != null)
+        {
+            BusyCountText.Text = countText;
+            BusyCountText.Visibility = Visibility.Visible;
+        }
+    }
+
+    void BusyCard_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is DependencyObject dep && FindVisualParent<Button>(dep) != null)
+            return;
+
+        _isDraggingCard = true;
+        _dragStartPoint = e.GetPosition(this);
+        _dragStartX = BusyCardTransform.X;
+        _dragStartY = BusyCardTransform.Y;
+        BusyCard.CaptureMouse();
+    }
+
+    void BusyCard_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_isDraggingCard) return;
+        var current = e.GetPosition(this);
+        var diff = current - _dragStartPoint;
+        BusyCardTransform.X = _dragStartX + diff.X;
+        BusyCardTransform.Y = _dragStartY + diff.Y;
+    }
+
+    void BusyCard_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (_isDraggingCard)
+        {
+            _isDraggingCard = false;
+            BusyCard.ReleaseMouseCapture();
+        }
+    }
+
+    void BusyMiniToggle_Click(object sender, RoutedEventArgs e)
+    {
+        _busyCardMinimized = !_busyCardMinimized;
+        BusyExpandedContent.Visibility = _busyCardMinimized ? Visibility.Collapsed : Visibility.Visible;
+        BusyMiniToggleBtn.Content = _busyCardMinimized ? "\uE922" : "\uE921";
+        BusyMiniToggleBtn.ToolTip = _busyCardMinimized ? "Expand progress card" : "Minimize progress card";
+        BusyCard.Width = _busyCardMinimized ? 280 : 410;
+    }
+
+    static T? FindVisualParent<T>(DependencyObject child) where T : DependencyObject
+    {
+        var current = child;
+        while (current != null)
+        {
+            if (current is T parent) return parent;
+            current = VisualTreeHelper.GetParent(current);
+        }
+        return null;
     }
 
     void UpdateButtonStates()
@@ -376,6 +479,14 @@ public partial class MainWindow : Window
     {
         _terminalAutoCollapsed = false;
         SetTerminalCollapsed(!_terminalCollapsed);
+    }
+
+    void TerminalSplitter_DragDelta(object sender, DragDeltaEventArgs e)
+    {
+        var max = Math.Max(120, ActualHeight - 360);
+        var height = Math.Clamp(TerminalRow.ActualHeight - e.VerticalChange, 80, max);
+        TerminalRow.Height = new GridLength(height);
+        _terminalHeight = height;
     }
 
     void SetTerminalCollapsed(bool collapsed)
@@ -520,13 +631,82 @@ public partial class MainWindow : Window
 
     void VersionPicker_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_loadingUi) return;
+        if (_loadingUi || _syncingTarget) return;
         if (VersionPicker.SelectedItem is VersionOption option)
         {
-            TargetBox.Text = option.Version;
-            if (option.WillDownload)
-                SetStatus($"Gradle {option.Version} is not downloaded yet.", "WarningBrush");
+            _syncingTarget = true;
+            try
+            {
+                TargetBox.Text = option.Version;
+                ApplyTargetToProjects(option.Version);
+                if (option.WillDownload)
+                    SetStatus($"Gradle {option.Version} is not downloaded yet.", "WarningBrush");
+            }
+            finally
+            {
+                _syncingTarget = false;
+            }
         }
+    }
+
+    void TargetBox_LostFocus(object sender, RoutedEventArgs e) => CommitTargetBox();
+
+    void TargetBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            CommitTargetBox();
+            e.Handled = true;
+        }
+    }
+
+    void CommitTargetBox()
+    {
+        if (_loadingUi || _syncingTarget) return;
+        var target = (TargetBox.Text ?? "").Trim();
+        if (!VersionFormat.IsMatch(target)) return;
+
+        _syncingTarget = true;
+        try
+        {
+            SelectVersion(VersionPicker, target);
+            ApplyTargetToProjects(target);
+        }
+        finally
+        {
+            _syncingTarget = false;
+        }
+    }
+
+    void DefaultTargetBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loadingUi) return;
+        var version = SelectedVersion(DefaultTargetBox)?.Trim();
+        if (!string.IsNullOrWhiteSpace(version) && VersionFormat.IsMatch(version))
+        {
+            _s.DefaultGradleVersion = version;
+        }
+    }
+
+    void ApplyTargetToProjects(string target)
+    {
+        if (!VersionFormat.IsMatch(target) || _projects.Count == 0) return;
+        _compat = Compat.Load();
+
+        var affected = _projects.Where(p => p.Selected).ToList();
+        if (affected.Count == 0 && ProjectsGrid.SelectedItem is ProjectInfo current)
+            affected.Add(current);
+
+        if (affected.Count == 0) return;
+
+        foreach (var p in affected)
+        {
+            p.Target = target;
+            RecalculatePlan(p, _compat);
+        }
+
+        UpdateSummary();
+        UpdateDetails();
     }
 
     // ---------- folder pickers ----------
@@ -861,24 +1041,32 @@ public partial class MainWindow : Window
         SaveSettings();
         _cts = new CancellationTokenSource();
         var ct = _cts.Token;
-        SetBusy(true, "Applying updates...");
+        int total = todo.Count;
+        SetTerminalCollapsed(false);
+        SetBusy(true, "Applying updates...", isIndeterminate: false, percent: 0,
+            detail: $"Preparing {total} project(s)...", countText: $"0 / {total}");
         int success = 0, rolled = 0, failed = 0;
 
         try
         {
             var checksums = new Dictionary<string, string?>();
-            foreach (var p in todo)
+            for (int i = 0; i < total; i++)
             {
+                var p = todo[i];
                 ct.ThrowIfCancellationRequested();
+                double startPct = (double)i / total * 100;
+                SetProgress(startPct, $"Updating {p.Name} ...", $"{i + 1} / {total}");
                 try
                 {
                     p.Status = "Updating...";
                     UpdateDetails();
 
-                    if (!checksums.TryGetValue(p.Target, out var checksum))
+                    var distType = !string.IsNullOrWhiteSpace(p.DistributionType) ? p.DistributionType : "bin";
+                    var cacheKey = $"{p.Target}:{distType}";
+                    if (!checksums.TryGetValue(cacheKey, out var checksum))
                     {
-                        checksum = await GradleVersionService.GetChecksumAsync(p.Target, ct);
-                        checksums[p.Target] = checksum;
+                        checksum = await GradleVersionService.GetChecksumAsync(p.Target, distType, ct);
+                        checksums[cacheKey] = checksum;
                     }
 
                     var gradleChanged = ProjectScanner.UpdateWrapper(p, p.Target, checksum);
@@ -913,6 +1101,7 @@ public partial class MainWindow : Window
                     p.Status = "Building...";
                     SetStatus($"Building {p.Name} ...", "PrimaryBrush");
                     Log($"Building {p.Name} (gradlew {VerifyTask}) ...");
+                    SetProgress(startPct, $"Building {p.Name} ({VerifyTask}) ...", $"{i + 1} / {total}");
                     var result = await Runner.Gradlew(p.Path, VerifyTask, CustomHome, Timeout, LogUi, ct);
 
                     if (result == false)
@@ -943,10 +1132,14 @@ public partial class MainWindow : Window
                 }
                 finally
                 {
+                    double endPct = (double)(i + 1) / total * 100;
+                    SetProgress(endPct, $"{p.Name} completed", $"{i + 1} / {total}");
                     UpdateSummary();
                     UpdateDetails();
                 }
             }
+
+            SetProgress(100, "Done", $"{total} / {total}");
 
             Log($"Done: {success} updated, {rolled} rolled back, {failed} failed.");
             SetStatus($"Done: {success} updated, {rolled} rolled back, {failed} failed.",
@@ -1064,9 +1257,10 @@ public partial class MainWindow : Window
 
             _s.UseRecycleBin = dlg.UseRecycleBin;
             var chosen = dlg.Selected;
+            var useRecycleBin = dlg.UseRecycleBin;
             SetBusy(true, "Deleting selected items...");
             SetStatus("Deleting...", "DangerBrush");
-            var (freed, errors) = await Task.Run(() => GradleCleaner.Delete(chosen, dlg.UseRecycleBin));
+            var (freed, errors) = await Task.Run(() => GradleCleaner.Delete(chosen, useRecycleBin));
             Log($"Freed {Format.Size(freed)} from {home}.");
             foreach (var error in errors) Log("ERROR " + error);
             SetStatus($"Freed {Format.Size(freed)}" + (errors.Count > 0 ? $" ({errors.Count} error(s), see log)" : ""),
@@ -1186,7 +1380,52 @@ public partial class MainWindow : Window
         EmptyState.Visibility = _projects.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    void ProjectsGrid_SelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateDetails();
+    void ProjectsGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        UpdateDetails();
+        if (_loadingUi || _syncingTarget) return;
+        if (ProjectsGrid.SelectedItem is ProjectInfo p && !string.IsNullOrWhiteSpace(p.Target) && VersionFormat.IsMatch(p.Target))
+        {
+            _syncingTarget = true;
+            try
+            {
+                TargetBox.Text = p.Target;
+                SelectVersion(VersionPicker, p.Target);
+            }
+            finally
+            {
+                _syncingTarget = false;
+            }
+        }
+    }
+
+    void ProjectsGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+    {
+        if (e.EditAction != DataGridEditAction.Commit) return;
+        if (e.Row.Item is not ProjectInfo p) return;
+
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            _compat = Compat.Load();
+            RecalculatePlan(p, _compat);
+            UpdateSummary();
+            UpdateDetails();
+
+            if (!string.IsNullOrWhiteSpace(p.Target) && VersionFormat.IsMatch(p.Target))
+            {
+                _syncingTarget = true;
+                try
+                {
+                    TargetBox.Text = p.Target;
+                    SelectVersion(VersionPicker, p.Target);
+                }
+                finally
+                {
+                    _syncingTarget = false;
+                }
+            }
+        }), System.Windows.Threading.DispatcherPriority.Background);
+    }
 
     void UpdateDetails()
     {
