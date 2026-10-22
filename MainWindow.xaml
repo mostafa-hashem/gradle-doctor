@@ -295,8 +295,12 @@
                                 <CheckBox x:Name="UpdateAgpCheck" Content="Auto-update AGP to newest compatible"
                                           IsChecked="True" Margin="0,0,22,8"
                                           ToolTip="Detects AGP in settings/build files and libs.versions.toml, then suggests the newest compatible version" />
-                                <CheckBox x:Name="VerifyCheck" Content="Build after update and roll back on failure"
-                                          Margin="0,0,22,8" />
+                                <CheckBox x:Name="VerifyCheck" Content="Build after update"
+                                          Margin="0,0,16,8"
+                                          ToolTip="Runs verification build (e.g. assembleDebug) after updating versions" />
+                                <CheckBox x:Name="RollbackCheck" Content="Roll back on build failure"
+                                          Margin="0,0,22,8"
+                                          ToolTip="If checked, reverts changes to previous version if the test build fails. If unchecked, keeps updated files so you can inspect and fix errors." />
                                 <StackPanel Orientation="Horizontal" Margin="0,0,18,8">
                                     <TextBlock Text="Task" FontWeight="Medium"
                                                Foreground="{DynamicResource TextSecondaryBrush}"

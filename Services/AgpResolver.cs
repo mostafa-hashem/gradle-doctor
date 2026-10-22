@@ -195,9 +195,53 @@ public static class AgpResolver
             catch { }
         }
 
+        if (changed.Count > 0 && int.TryParse(newAgp.Split('.')[0], out var agpMajor) && agpMajor >= 9)
+        {
+            try
+            {
+                if (ApplyAgp9CompatibilityPatch(projectDir))
+                {
+                    var bg = System.IO.Path.Combine(projectDir, "build.gradle");
+                    if (!changed.Contains(bg, StringComparer.OrdinalIgnoreCase)) changed.Add(bg);
+                }
+            }
+            catch { }
+        }
+
         if (changed.Count == 0)
             return new AgpUpdateResult(false, Array.Empty<string>(), "Could not find an AGP declaration to update.");
         return new AgpUpdateResult(true, changed);
+    }
+
+    /// <summary>
+    /// When upgrading AGP to 9.0+, some Flutter plugins (like file_picker, firebase_analytics) skip
+    /// applying the Kotlin Android plugin due to conditional version checks in their build.gradle.
+    /// This injects a subprojects hook into the root build.gradle to ensure their Kotlin sources compile.
+    /// </summary>
+    public static bool ApplyAgp9CompatibilityPatch(string projectDir)
+    {
+        var buildGradle = System.IO.Path.Combine(projectDir, "build.gradle");
+        if (!File.Exists(buildGradle)) return false;
+
+        var text = File.ReadAllText(buildGradle);
+        if (text.Contains("file_picker") && text.Contains("org.jetbrains.kotlin.android"))
+            return false;
+
+        var patch = Environment.NewLine +
+            "// Added by GradleDoctor: Ensure Kotlin Android plugin is applied to Flutter plugins under AGP 9+" + Environment.NewLine +
+            "subprojects { project ->" + Environment.NewLine +
+            "    if (project.name in ['file_picker', 'firebase_analytics']) {" + Environment.NewLine +
+            "        project.pluginManager.withPlugin('com.android.library') {" + Environment.NewLine +
+            "            if (!project.plugins.hasPlugin('org.jetbrains.kotlin.android')) {" + Environment.NewLine +
+            "                project.apply plugin: 'org.jetbrains.kotlin.android'" + Environment.NewLine +
+            "            }" + Environment.NewLine +
+            "        }" + Environment.NewLine +
+            "    }" + Environment.NewLine +
+            "}" + Environment.NewLine;
+
+        Backup(buildGradle);
+        File.WriteAllText(buildGradle, text + patch);
+        return true;
     }
 
     public static bool Restore(string projectDir)

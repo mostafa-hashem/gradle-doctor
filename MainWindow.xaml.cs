@@ -61,6 +61,7 @@ public partial class MainWindow : Window
         SkipChips.ItemsSource = _skipFolders;
         LoadTokenEditors();
         VerifyCheck.IsChecked = _s.VerifyBuild;
+        RollbackCheck.IsChecked = _s.RollbackOnFailure;
         UpdateAgpCheck.IsChecked = _s.UpdateAgp;
         TaskBox.Text = _s.VerifyTask;
         TimeoutBox.Text = _s.TimeoutMinutes.ToString();
@@ -322,6 +323,7 @@ public partial class MainWindow : Window
         _s.GradleHome = GradleHomeBox.Text.Trim();
         _s.SkipFolders = string.Join(",", _skipFolders);
         _s.VerifyBuild = VerifyCheck.IsChecked == true;
+        _s.RollbackOnFailure = RollbackCheck.IsChecked == true;
         _s.UpdateAgp = UpdateAgpCheck.IsChecked == true;
         _s.VerifyTask = VerifyTask;
         _s.TimeoutMinutes = Timeout;
@@ -1191,11 +1193,20 @@ public partial class MainWindow : Window
 
                     if (result == false)
                     {
-                        ProjectScanner.Restore(p);
-                        p.TargetAgp = p.Agp;
-                        p.Status = "Rolled back";
-                        Log($"{p.Name}: build FAILED, rolled back to Gradle {p.CurrentGradle} / AGP {p.Agp}.");
-                        rolled++;
+                        if (RollbackCheck.IsChecked == true)
+                        {
+                            ProjectScanner.Restore(p);
+                            p.TargetAgp = p.Agp;
+                            p.Status = "Rolled back";
+                            Log($"{p.Name}: build FAILED, rolled back to Gradle {p.CurrentGradle} / AGP {p.Agp}.");
+                            rolled++;
+                        }
+                        else
+                        {
+                            p.Status = "Build FAILED (kept)";
+                            Log($"{p.Name}: build FAILED, but changes KEPT (rollback disabled). Check build output.");
+                            failed++;
+                        }
                     }
                     else if (result == null)
                     {

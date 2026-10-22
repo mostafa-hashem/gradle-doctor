@@ -87,6 +87,7 @@ public class AppSettings
     public bool UseRecycleBin { get; set; } = true;
     public bool AutoDownload { get; set; } = true;
     public bool VerifyBuild { get; set; } = false;
+    public bool RollbackOnFailure { get; set; } = false;
     public bool UpdateAgp { get; set; } = true;
     public string VerifyTask { get; set; } = "assembleDebug";
     public int TimeoutMinutes { get; set; } = 15;
