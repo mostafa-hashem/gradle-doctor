@@ -733,4 +733,13 @@
         </Style.Triggers>
     </Style>
 
+    <!-- ========== PROGRESS BAR (Indeterminate Accent) ========== -->
+    <Style x:Key="ModernProgressBarStyle" TargetType="ProgressBar">
+        <Setter Property="Height" Value="4" />
+        <Setter Property="Foreground" Value="{StaticResource PrimaryBrush}" />
+        <Setter Property="Background" Value="#E2E8F0" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style TargetType="ProgressBar" BasedOn="{StaticResource ModernProgressBarStyle}" />
+
 </ResourceDictionary>
