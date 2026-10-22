@@ -37,14 +37,16 @@ public partial class CleanupDialog : Window
 
     public List<CleanItem> Selected => _rows.Where(r => r.IsSelected).Select(r => r.Item).ToList();
     public bool UseRecycleBin => RecycleCheck.IsChecked == true;
+    public bool ForceDelete { get; private set; }
 
-    public CleanupDialog(List<CleanItem> items, bool useRecycleBin = true)
+    public CleanupDialog(List<CleanItem> items, bool useRecycleBin = true, bool forceDelete = false)
     {
         InitializeComponent();
         _rows = new ObservableCollection<CleanupRow>(items.Select(i => new CleanupRow(i)));
         ItemsGrid.ItemsSource = _rows;
         foreach (var row in _rows) row.PropertyChanged += (_, _) => UpdateSummary();
         RecycleCheck.IsChecked = useRecycleBin;
+        ForceCheck.IsChecked = forceDelete;
         UpdateSummary();
         UpdateHint();
     }
@@ -56,14 +58,24 @@ public partial class CleanupDialog : Window
         SelectedSize.Text = Format.Size(selected.Sum(r => r.Item.Size));
         TotalCount.Text = $"{_rows.Count} item{(_rows.Count == 1 ? "" : "s")}";
         DeleteBtn.IsEnabled = selected.Count > 0;
+        ForceDeleteBtn.IsEnabled = selected.Count > 0;
     }
 
     void UpdateHint()
     {
         if (HintText is null) return;
-        HintText.Text = UseRecycleBin
-            ? "Send to Recycle Bin (safe, but slower for large caches)."
-            : "Permanent delete: deletes immediately without Recycle Bin (much faster).";
+        if (ForceCheck.IsChecked == true)
+        {
+            HintText.Text = "Force delete: will close locking processes (Gradle daemons/Java) and delete permanently.";
+        }
+        else if (UseRecycleBin)
+        {
+            HintText.Text = "Send to Recycle Bin (safe, but slower for large caches).";
+        }
+        else
+        {
+            HintText.Text = "Permanent delete: deletes immediately without Recycle Bin.";
+        }
     }
 
     void SelectAll_Click(object sender, RoutedEventArgs e)
@@ -76,7 +88,7 @@ public partial class CleanupDialog : Window
         foreach (var row in _rows) row.IsSelected = false;
     }
 
-    void Recycle_Changed(object sender, RoutedEventArgs e) => UpdateHint();
+    void Option_Changed(object sender, RoutedEventArgs e) => UpdateHint();
 
     void Delete_Click(object sender, RoutedEventArgs e)
     {
@@ -87,13 +99,36 @@ public partial class CleanupDialog : Window
             return;
         }
 
+        ForceDelete = ForceCheck.IsChecked == true;
         var size = Format.Size(selected.Sum(i => i.Size));
-        var mode = UseRecycleBin ? "move them to the Recycle Bin" : "permanently delete them";
+        var mode = ForceDelete
+            ? "terminate locking processes and permanently delete them"
+            : (UseRecycleBin ? "move them to the Recycle Bin" : "permanently delete them");
+
         if (!DialogService.ConfirmDanger(
                 $"Delete {selected.Count} item(s) and {mode}?\n\nSpace to reclaim: {size}",
                 "Confirm cleanup", "Delete", "Cancel"))
             return;
 
+        DialogResult = true;
+    }
+
+    void ForceDelete_Click(object sender, RoutedEventArgs e)
+    {
+        var selected = Selected;
+        if (selected.Count == 0)
+        {
+            DialogService.Warning("Select at least one item to delete.", "Nothing selected");
+            return;
+        }
+
+        var size = Format.Size(selected.Sum(i => i.Size));
+        if (!DialogService.ConfirmDanger(
+                $"Force delete {selected.Count} item(s)?\n\nThis will terminate any processes (such as Gradle daemons or Java) locking these files and permanently delete them.\n\nSpace to reclaim: {size}",
+                "Confirm Force Cleanup", "Force Delete", "Cancel"))
+            return;
+
+        ForceDelete = true;
         DialogResult = true;
     }
 

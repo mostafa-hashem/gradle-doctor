@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -85,6 +86,7 @@ public class AppSettings
     public string ThemeMode { get; set; } = "Light";       // Light, Dark, System
     public int SettingsVersion { get; set; }
     public bool UseRecycleBin { get; set; } = true;
+    public bool ForceDeleteLocked { get; set; } = false;
     public bool AutoDownload { get; set; } = true;
     public bool VerifyBuild { get; set; } = false;
     public bool RollbackOnFailure { get; set; } = false;
@@ -545,31 +547,265 @@ public static class GradleCleaner
 
     public record CleanProgress(int CurrentIndex, int TotalCount, CleanItem CurrentItem, long TotalFreedBytes);
 
-    public static (long, List<string>) Delete(
+    public static (long freed, List<string> errors) Delete(
         IReadOnlyList<CleanItem> items,
         bool useRecycleBin = false,
+        bool forceDelete = false,
         Action<CleanProgress>? onProgress = null,
+        Action<string>? onLog = null,
         CancellationToken ct = default)
     {
-        long freed = 0; var errors = new List<string>();
+        long freed = 0;
+        var errors = new List<string>();
+
+        if (forceDelete)
+        {
+            onLog?.Invoke("Force delete enabled: checking and closing background Gradle/Kotlin daemons...");
+            FileLockService.KillGradleAndKotlinDaemons(onLog);
+        }
+
         for (int idx = 0; idx < items.Count; idx++)
         {
             if (ct.IsCancellationRequested) break;
             var i = items[idx];
             onProgress?.Invoke(new CleanProgress(idx + 1, items.Count, i, freed));
+
             try
             {
-                if (useRecycleBin)
-                    Microsoft.VisualBasic.FileIO.FileSystem.DeleteDirectory(i.Path,
-                        Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
-                        Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+                bool deleted = false;
+
+                // Try Recycle Bin only if requested and forceDelete is false
+                if (useRecycleBin && !forceDelete)
+                {
+                    deleted = ShellDelete.SendToRecycleBin(i.Path);
+                    if (!deleted && !Directory.Exists(i.Path)) deleted = true;
+                }
+
+                // If not moved to recycle bin or if permanent/force delete requested
+                if (!deleted)
+                {
+                    DeleteDirectoryRobust(i.Path, forceDelete, onLog, ct);
+                    deleted = !Directory.Exists(i.Path);
+                }
+
+                if (deleted || !Directory.Exists(i.Path))
+                {
+                    freed += i.Size;
+                }
                 else
-                    Directory.Delete(i.Path, recursive: true);
-                freed += i.Size;
+                {
+                    errors.Add($"{i.Path}: Could not delete folder (still exists).");
+                }
             }
-            catch (Exception ex) { errors.Add($"{i.Path}: {ex.Message}"); }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"{i.Path}: {ex.Message}");
+                onLog?.Invoke($"Failed to delete {i.Path}: {ex.Message}");
+            }
         }
         return (freed, errors);
+    }
+
+    public static void DeleteDirectoryRobust(
+        string dirPath,
+        bool forceDelete,
+        Action<string>? onLog,
+        CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        if (!Directory.Exists(dirPath)) return;
+
+        if (forceDelete)
+        {
+            FileLockService.UnlockPath(dirPath, onLog);
+        }
+
+        DeleteDirectoryInternal(new DirectoryInfo(dirPath), forceDelete, onLog, ct);
+
+        ct.ThrowIfCancellationRequested();
+        try
+        {
+            var di = new DirectoryInfo(dirPath);
+            if (di.Exists)
+            {
+                di.Attributes = FileAttributes.Directory;
+                di.Delete(false);
+            }
+        }
+        catch (Exception)
+        {
+            if (forceDelete)
+            {
+                FileLockService.UnlockPath(dirPath, onLog);
+                Thread.Sleep(50);
+                var di = new DirectoryInfo(dirPath);
+                if (di.Exists)
+                {
+                    di.Attributes = FileAttributes.Directory;
+                    di.Delete(false);
+                }
+            }
+            else throw;
+        }
+    }
+
+    static void DeleteDirectoryInternal(DirectoryInfo dir, bool forceDelete, Action<string>? onLog, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+
+        try
+        {
+            if ((dir.Attributes & (FileAttributes.ReadOnly | FileAttributes.Hidden | FileAttributes.System)) != 0)
+                dir.Attributes = FileAttributes.Directory;
+        }
+        catch { }
+
+        FileInfo[] files;
+        try { files = dir.GetFiles(); }
+        catch (Exception)
+        {
+            if (forceDelete)
+            {
+                FileLockService.UnlockPath(dir.FullName, onLog);
+                files = dir.GetFiles();
+            }
+            else throw;
+        }
+
+        foreach (var file in files)
+        {
+            ct.ThrowIfCancellationRequested();
+            DeleteFileInternal(file, forceDelete, onLog, ct);
+        }
+
+        DirectoryInfo[] subDirs;
+        try { subDirs = dir.GetDirectories(); }
+        catch (Exception)
+        {
+            if (forceDelete)
+            {
+                FileLockService.UnlockPath(dir.FullName, onLog);
+                subDirs = dir.GetDirectories();
+            }
+            else throw;
+        }
+
+        foreach (var subDir in subDirs)
+        {
+            ct.ThrowIfCancellationRequested();
+            DeleteDirectoryInternal(subDir, forceDelete, onLog, ct);
+            ct.ThrowIfCancellationRequested();
+            try
+            {
+                if (subDir.Exists)
+                {
+                    subDir.Attributes = FileAttributes.Directory;
+                    subDir.Delete(false);
+                }
+            }
+            catch (Exception)
+            {
+                if (forceDelete)
+                {
+                    FileLockService.UnlockPath(subDir.FullName, onLog);
+                    Thread.Sleep(50);
+                    if (subDir.Exists)
+                    {
+                        subDir.Attributes = FileAttributes.Directory;
+                        subDir.Delete(false);
+                    }
+                }
+                else throw;
+            }
+        }
+    }
+
+    static void DeleteFileInternal(FileInfo file, bool forceDelete, Action<string>? onLog, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        try
+        {
+            if (file.IsReadOnly || (file.Attributes & (FileAttributes.ReadOnly | FileAttributes.Hidden | FileAttributes.System)) != 0)
+            {
+                file.Attributes = FileAttributes.Normal;
+            }
+            file.Delete();
+        }
+        catch (Exception ex) when (forceDelete && (ex is IOException or UnauthorizedAccessException))
+        {
+            onLog?.Invoke($"Unlocking and terminating processes for: {file.Name}");
+            var lockers = FileLockService.FindLockingProcesses(file.FullName);
+            if (lockers.Count > 0)
+            {
+                foreach (var locker in lockers)
+                {
+                    onLog?.Invoke($"Terminating locking process: {locker.ProcessName} (PID {locker.ProcessId})");
+                    FileLockService.KillProcess(locker.ProcessId, onLog);
+                }
+            }
+            else
+            {
+                FileLockService.KillGradleAndKotlinDaemons(onLog);
+            }
+
+            try { file.Attributes = FileAttributes.Normal; } catch { }
+            Thread.Sleep(50);
+            ct.ThrowIfCancellationRequested();
+            file.Delete();
+        }
+    }
+}
+
+public static class ShellDelete
+{
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    struct SHFILEOPSTRUCT
+    {
+        public IntPtr hwnd;
+        public uint wFunc;
+        [MarshalAs(UnmanagedType.LPWStr)]
+        public string pFrom;
+        [MarshalAs(UnmanagedType.LPWStr)]
+        public string? pTo;
+        public ushort fFlags;
+        [MarshalAs(UnmanagedType.Bool)]
+        public bool fAnyOperationsAborted;
+        public IntPtr hNameMappings;
+        [MarshalAs(UnmanagedType.LPWStr)]
+        public string? lpszProgressTitle;
+    }
+
+    const uint FO_DELETE = 0x0003;
+    const ushort FOF_ALLOWUNDO = 0x0040;
+    const ushort FOF_NOCONFIRMATION = 0x0010;
+    const ushort FOF_SILENT = 0x0004;
+    const ushort FOF_NOERRORUI = 0x0400;
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    static extern int SHFileOperation(ref SHFILEOPSTRUCT lpFileOp);
+
+    public static bool SendToRecycleBin(string path)
+    {
+        if (!Directory.Exists(path) && !File.Exists(path)) return true;
+
+        var op = new SHFILEOPSTRUCT
+        {
+            hwnd = IntPtr.Zero,
+            wFunc = FO_DELETE,
+            pFrom = path + "\0\0",
+            pTo = null,
+            fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_SILENT | FOF_NOERRORUI,
+            fAnyOperationsAborted = false,
+            hNameMappings = IntPtr.Zero,
+            lpszProgressTitle = null
+        };
+
+        int ret = SHFileOperation(ref op);
+        return ret == 0 && !op.fAnyOperationsAborted && !Directory.Exists(path) && !File.Exists(path);
     }
 }
 

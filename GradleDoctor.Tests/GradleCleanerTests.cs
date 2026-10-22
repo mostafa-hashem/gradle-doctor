@@ -70,6 +70,41 @@ public class GradleCleanerTests
         Assert.True(Directory.Exists(unused[0].Path));
     }
 
+    [Fact]
+    public void DeleteSupportsForceDelete()
+    {
+        using var temp = new TempDirectory();
+        CreateDistribution(temp.Path, "8.6");
+        CreateDistribution(temp.Path, "9.0");
+
+        var unused = GradleCleaner.FindUnused(temp.Path, new HashSet<string>());
+        var (freed, errors) = GradleCleaner.Delete(unused, useRecycleBin: false, forceDelete: true);
+
+        Assert.Empty(errors);
+        Assert.False(Directory.Exists(unused[0].Path));
+        Assert.False(Directory.Exists(unused[1].Path));
+    }
+
+    [Fact]
+    public void DeleteStopsImmediatelyOnCancellationDuringProgress()
+    {
+        using var temp = new TempDirectory();
+        CreateDistribution(temp.Path, "8.6");
+        CreateDistribution(temp.Path, "9.0");
+
+        var unused = GradleCleaner.FindUnused(temp.Path, new HashSet<string>());
+        using var cts = new CancellationTokenSource();
+
+        var (freed, errors) = GradleCleaner.Delete(
+            unused,
+            useRecycleBin: false,
+            onProgress: _ => cts.Cancel(),
+            ct: cts.Token);
+
+        Assert.True(cts.IsCancellationRequested);
+        Assert.True(Directory.Exists(unused[1].Path));
+    }
+
     static void CreateDistribution(string home, string version)
     {
         Directory.CreateDirectory(Path.Combine(home, "wrapper", "dists", $"gradle-{version}-bin"));

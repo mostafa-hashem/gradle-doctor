@@ -298,6 +298,9 @@
                                 <CheckBox x:Name="VerifyCheck" Content="Build after update"
                                           Margin="0,0,16,8"
                                           ToolTip="Runs verification build (e.g. assembleDebug) after updating versions" />
+                                <CheckBox x:Name="ForceDeleteCheck" Content="Force delete locked caches"
+                                          Margin="0,0,22,8"
+                                          ToolTip="Automatically terminates any background processes (like Gradle daemons or Java) locking cache files so deletion succeeds." />
                                 <CheckBox x:Name="RollbackCheck" Content="Roll back on build failure"
                                           Margin="0,0,22,8"
                                           ToolTip="If checked, reverts changes to previous version if the test build fails. If unchecked, keeps updated files so you can inspect and fix errors." />

@@ -124,10 +124,14 @@
                     <Grid>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <CheckBox x:Name="RecycleCheck" Content="Send to Recycle Bin" IsChecked="True"
-                                      VerticalAlignment="Center" Checked="Recycle_Changed" Unchecked="Recycle_Changed" />
+                                      VerticalAlignment="Center" Checked="Option_Changed" Unchecked="Option_Changed" />
+                            <CheckBox x:Name="ForceCheck" Content="Force delete (kill locking processes)"
+                                      Margin="14,0,0,0" VerticalAlignment="Center"
+                                      ToolTip="Closes any Gradle daemons, Java, or locking processes holding cache files so deletion succeeds."
+                                      Checked="Option_Changed" Unchecked="Option_Changed" />
                             <TextBlock x:Name="HintText" Text="You can restore deleted items from the Recycle Bin."
                                        FontSize="11" Foreground="{DynamicResource TextMutedBrush}" Margin="14,0,0,0"
-                                       VerticalAlignment="Center" />
+                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="320" />
                         </StackPanel>
 
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
@@ -135,7 +139,10 @@
                             <Button Content="Select none" Margin="0,0,12,0" Click="SelectNone_Click" />
                             <Button Content="Cancel" Margin="0,0,8,0" Padding="16,7" Click="Cancel_Click" />
                             <Button x:Name="DeleteBtn" Content="Delete selected" Style="{StaticResource DangerButtonStyle}"
-                                    Padding="18,7" Click="Delete_Click" />
+                                    Padding="16,7" Click="Delete_Click" />
+                            <Button x:Name="ForceDeleteBtn" Content="Force delete" Style="{StaticResource DangerButtonStyle}"
+                                    Margin="6,0,0,0" Padding="16,7" Click="ForceDelete_Click"
+                                    ToolTip="Forcefully terminate any processes holding locks and delete selected items immediately" />
                         </StackPanel>
                     </Grid>
                 </Border>

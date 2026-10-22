@@ -62,6 +62,7 @@ public partial class MainWindow : Window
         LoadTokenEditors();
         VerifyCheck.IsChecked = _s.VerifyBuild;
         RollbackCheck.IsChecked = _s.RollbackOnFailure;
+        ForceDeleteCheck.IsChecked = _s.ForceDeleteLocked;
         UpdateAgpCheck.IsChecked = _s.UpdateAgp;
         TaskBox.Text = _s.VerifyTask;
         TimeoutBox.Text = _s.TimeoutMinutes.ToString();
@@ -324,6 +325,7 @@ public partial class MainWindow : Window
         _s.SkipFolders = string.Join(",", _skipFolders);
         _s.VerifyBuild = VerifyCheck.IsChecked == true;
         _s.RollbackOnFailure = RollbackCheck.IsChecked == true;
+        _s.ForceDeleteLocked = ForceDeleteCheck.IsChecked == true;
         _s.UpdateAgp = UpdateAgpCheck.IsChecked == true;
         _s.VerifyTask = VerifyTask;
         _s.TimeoutMinutes = Timeout;
@@ -421,6 +423,9 @@ public partial class MainWindow : Window
 
         if (busy)
         {
+            CancelBtn.IsEnabled = true;
+            CancelBtn.Content = "Cancel";
+
             BusyExpandedContent.Visibility = _busyCardMinimized ? Visibility.Collapsed : Visibility.Visible;
             BusyCard.Width = _busyCardMinimized ? 280 : 410;
         }
@@ -522,6 +527,8 @@ public partial class MainWindow : Window
 
     void Cancel_Click(object sender, RoutedEventArgs e)
     {
+        CancelBtn.IsEnabled = false;
+        CancelBtn.Content = "Cancelling...";
         CancelCurrent();
         Log("Cancellation requested...");
         SetStatus("Cancelling...", "WarningBrush");
@@ -1344,7 +1351,7 @@ public partial class MainWindow : Window
                 return;
             }
 
-            var dlg = new CleanupDialog(unused, _s.UseRecycleBin) { Owner = this };
+            var dlg = new CleanupDialog(unused, _s.UseRecycleBin, _s.ForceDeleteLocked) { Owner = this };
             if (dlg.ShowDialog() != true || dlg.Selected.Count == 0)
             {
                 SetStatus("Cleanup cancelled.", "TextMutedBrush");
@@ -1352,8 +1359,11 @@ public partial class MainWindow : Window
             }
 
             _s.UseRecycleBin = dlg.UseRecycleBin;
+            _s.ForceDeleteLocked = dlg.ForceDelete;
+            ForceDeleteCheck.IsChecked = _s.ForceDeleteLocked;
             var chosen = dlg.Selected;
             var useRecycleBin = dlg.UseRecycleBin;
+            var forceDelete = dlg.ForceDelete;
 
             CancelCurrent();
             _cts = new CancellationTokenSource();
@@ -1362,18 +1372,26 @@ public partial class MainWindow : Window
             SetBusy(true, "Deleting selected items...", isIndeterminate: false, percent: 0,
                 detail: $"Starting cleanup of {chosen.Count} item(s)...", countText: $"0 of {chosen.Count}");
             SetStatus("Deleting...", "DangerBrush");
-            Log($"Starting cleanup: deleting {chosen.Count} unused item(s) from {home} (Recycle Bin: {(useRecycleBin ? "Enabled" : "Disabled")}) ...");
+            Log($"Starting cleanup: deleting {chosen.Count} unused item(s) from {home} (Recycle Bin: {(useRecycleBin ? "Enabled" : "Disabled")}, Force Delete: {(forceDelete ? "Enabled" : "Disabled")}) ...");
 
-            var (freed, errors) = await Task.Run(() => GradleCleaner.Delete(chosen, useRecycleBin, progress =>
-            {
-                var pct = Math.Round((double)(progress.CurrentIndex - 1) / progress.TotalCount * 100.0, 1);
-                var itemLabel = $"{progress.CurrentItem.Kind.ToUpperInvariant()} {progress.CurrentItem.Version} ({Format.Size(progress.CurrentItem.Size)})";
-                Dispatcher.Invoke(() =>
+            var (freed, errors) = await Task.Run(() => GradleCleaner.Delete(
+                chosen,
+                useRecycleBin: useRecycleBin,
+                forceDelete: forceDelete,
+                onProgress: progress =>
                 {
-                    SetProgress(pct, detail: $"Deleting {itemLabel}...", countText: $"{progress.CurrentIndex} of {progress.TotalCount}");
-                    Log($"  [{progress.CurrentIndex}/{progress.TotalCount}] Deleting {itemLabel} -> {progress.CurrentItem.Path}");
-                });
-            }, ct));
+                    if (ct.IsCancellationRequested) return;
+                    var pct = Math.Round((double)(progress.CurrentIndex - 1) / progress.TotalCount * 100.0, 1);
+                    var itemLabel = $"{progress.CurrentItem.Kind.ToUpperInvariant()} {progress.CurrentItem.Version} ({Format.Size(progress.CurrentItem.Size)})";
+                    Dispatcher.BeginInvoke(() =>
+                    {
+                        if (ct.IsCancellationRequested) return;
+                        SetProgress(pct, detail: $"Deleting {itemLabel}...", countText: $"{progress.CurrentIndex} of {progress.TotalCount}");
+                        Log($"  [{progress.CurrentIndex}/{progress.TotalCount}] Deleting {itemLabel} -> {progress.CurrentItem.Path}");
+                    });
+                },
+                onLog: msg => Dispatcher.BeginInvoke(() => Log("  " + msg)),
+                ct: ct));
 
             if (ct.IsCancellationRequested)
             {
@@ -1386,6 +1404,10 @@ public partial class MainWindow : Window
             SetProgress(100, detail: "Cleanup complete", countText: $"{chosen.Count} of {chosen.Count}");
             Log($"Freed {Format.Size(freed)} from {home}.");
             foreach (var error in errors) Log("ERROR " + error);
+            if (errors.Count > 0 && !forceDelete)
+            {
+                Log("Tip: Some files were locked or in use. Use 'Force delete' or check 'Force delete locked caches' in Settings to close locking processes automatically.");
+            }
             SetStatus($"Freed {Format.Size(freed)}" + (errors.Count > 0 ? $" ({errors.Count} error(s), see log)" : ""),
                 errors.Count > 0 ? "WarningBrush" : "SuccessBrush");
             ToastService.Show($"Freed {Format.Size(freed)}.", errors.Count > 0 ? ToastKind.Warning : ToastKind.Success);
@@ -1407,29 +1429,31 @@ public partial class MainWindow : Window
 
     async void Stop_Click(object sender, RoutedEventArgs e)
     {
-        if (_projects.Count == 0)
-        {
-            DialogService.Warning("Scan at least one project before stopping Gradle daemons.", "No projects");
-            return;
-        }
-
         CancelCurrent();
         _cts = new CancellationTokenSource();
         var ct = _cts.Token;
         SetBusy(true, "Stopping Gradle daemons...");
-        Log("Stopping Gradle daemons for all scanned projects ...");
+        Log("Stopping Gradle daemons and background compiler processes...");
         var failed = 0;
         try
         {
-            foreach (var path in _projects.Select(p => p.Path).Distinct(StringComparer.OrdinalIgnoreCase))
+            var paths = _projects.Select(p => p.Path).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            if (paths.Count > 0)
             {
-                ct.ThrowIfCancellationRequested();
-                var result = await Runner.Gradlew(path, "--stop", CustomHome, 2, LogUi, ct);
-                if (result == false) failed++;
+                foreach (var path in paths)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    var result = await Runner.Gradlew(path, "--stop", CustomHome, 2, LogUi, ct);
+                    if (result == false) failed++;
+                }
             }
-            Log(failed == 0 ? "Daemons stopped." : $"Daemons stopped with {failed} failure(s).");
-            SetStatus(failed == 0 ? "Daemons stopped." : $"Daemons stopped with {failed} failure(s).",
-                failed == 0 ? "SuccessBrush" : "WarningBrush");
+
+            var killed = await Task.Run(() => FileLockService.KillGradleAndKotlinDaemons(LogUi));
+            if (killed > 0) Log($"Terminated {killed} background daemon(s).");
+
+            var statusMsg = failed == 0 ? "Daemons stopped." : $"Daemons stopped with {failed} failure(s).";
+            Log(statusMsg);
+            SetStatus(statusMsg, failed == 0 ? "SuccessBrush" : "WarningBrush");
             ToastService.Show(failed == 0 ? "Gradle daemons stopped." : "Some daemons could not be stopped.",
                 failed == 0 ? ToastKind.Success : ToastKind.Warning);
         }
