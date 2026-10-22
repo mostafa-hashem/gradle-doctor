@@ -20,8 +20,8 @@
     <SolidColorBrush x:Key="CardBorderHoverBrush" Color="#CBD5E1" />
 
     <SolidColorBrush x:Key="TextPrimaryBrush" Color="#0F172A" />
-    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#64748B" />
-    <SolidColorBrush x:Key="TextMutedBrush" Color="#94A3B8" />
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#334155" />
+    <SolidColorBrush x:Key="TextMutedBrush" Color="#475569" />
 
     <SolidColorBrush x:Key="InputBgBrush" Color="#FFFFFF" />
     <SolidColorBrush x:Key="InputBorderBrush" Color="#CBD5E1" />
@@ -137,7 +137,9 @@
                             <Setter TargetName="border" Property="Background" Value="#E2E8F0" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="border" Property="Opacity" Value="0.45" />
+                            <Setter TargetName="border" Property="Background" Value="#F8FAFC" />
+                            <Setter TargetName="border" Property="BorderBrush" Value="#E2E8F0" />
+                            <Setter Property="Foreground" Value="#94A3B8" />
                             <Setter Property="Cursor" Value="Arrow" />
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -226,7 +228,10 @@
                             <Setter TargetName="border" Property="Background" Value="{StaticResource PrimaryPressedBrush}" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="border" Property="Opacity" Value="0.45" />
+                            <Setter TargetName="border" Property="Background" Value="#E2E8F0" />
+                            <Setter TargetName="border" Property="BorderThickness" Value="1" />
+                            <Setter TargetName="border" Property="BorderBrush" Value="#CBD5E1" />
+                            <Setter Property="Foreground" Value="#94A3B8" />
                             <Setter Property="Cursor" Value="Arrow" />
                             <Setter TargetName="border" Property="Effect" Value="{x:Null}" />
                         </Trigger>
@@ -302,7 +307,10 @@
                             <Setter TargetName="border" Property="Background" Value="#065F46" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="border" Property="Opacity" Value="0.45" />
+                            <Setter TargetName="border" Property="Background" Value="#E2E8F0" />
+                            <Setter TargetName="border" Property="BorderThickness" Value="1" />
+                            <Setter TargetName="border" Property="BorderBrush" Value="#CBD5E1" />
+                            <Setter Property="Foreground" Value="#94A3B8" />
                             <Setter Property="Cursor" Value="Arrow" />
                             <Setter TargetName="border" Property="Effect" Value="{x:Null}" />
                         </Trigger>
@@ -370,7 +378,9 @@
                             <Setter TargetName="border" Property="Background" Value="#FCA5A5" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="border" Property="Opacity" Value="0.45" />
+                            <Setter TargetName="border" Property="Background" Value="#F8FAFC" />
+                            <Setter TargetName="border" Property="BorderBrush" Value="#E2E8F0" />
+                            <Setter Property="Foreground" Value="#94A3B8" />
                             <Setter Property="Cursor" Value="Arrow" />
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -629,10 +639,10 @@
     <Style TargetType="DataGridColumnHeader">
         <Setter Property="FontFamily" Value="{StaticResource AppFont}" />
         <Setter Property="FontSize" Value="12" />
-        <Setter Property="FontWeight" Value="SemiBold" />
-        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
-        <Setter Property="Background" Value="#F8FAFC" />
-        <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Foreground" Value="#0F172A" />
+        <Setter Property="Background" Value="#F1F5F9" />
+        <Setter Property="BorderBrush" Value="#CBD5E1" />
         <Setter Property="BorderThickness" Value="0,0,0,1" />
         <Setter Property="Padding" Value="10,9" />
         <Setter Property="HorizontalContentAlignment" Value="Left" />
@@ -665,6 +675,32 @@
                             Padding="{TemplateBinding Padding}"
                             SnapsToDevicePixels="True">
                         <ContentPresenter VerticalAlignment="Center" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ========== TERMINAL LOG BOX STYLE ========== -->
+    <Style x:Key="TerminalTextBoxStyle" TargetType="TextBox">
+        <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Foreground" Value="#38BDF8" />
+        <Setter Property="Background" Value="#0B1120" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="12,10" />
+        <Setter Property="CaretBrush" Value="{StaticResource TerminalAccentBrush}" />
+        <Setter Property="SelectionBrush" Value="#334155" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <Border Background="#0B1120" BorderThickness="0" SnapsToDevicePixels="True">
+                        <ScrollViewer x:Name="PART_ContentHost"
+                                      Focusable="False"
+                                      HorizontalScrollBarVisibility="Auto"
+                                      VerticalScrollBarVisibility="Auto"
+                                      Margin="{TemplateBinding Padding}" />
                     </Border>
                 </ControlTemplate>
             </Setter.Value>

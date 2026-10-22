@@ -56,7 +56,7 @@
                     <StackPanel Orientation="Horizontal">
                         <Path Data="M 12 2 C 8.13 2 5 5.13 5 9 C 5 14.25 12 22 12 22 C 12 22 19 14.25 19 9 C 19 5.13 15.87 2 12 2 Z"
                               Fill="{StaticResource PrimaryBrush}" Width="11" Height="11" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center" />
-                        <TextBlock x:Name="HomeBadgeText" Text="Gradle Home Active" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" />
+                        <TextBlock x:Name="HomeBadgeText" Text="Gradle Home Active" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" />
                     </StackPanel>
                 </Border>
                 <Border CornerRadius="14" Background="{StaticResource PrimaryLightBrush}" BorderBrush="#BFDBFE" BorderThickness="1" Padding="12,5">
@@ -104,8 +104,8 @@
                     <Path Data="M 3 6 L 15 6 M 3 12 L 21 12 M 3 18 L 9 18 M 15 4 L 15 8 M 9 10 L 9 14 M 18 16 L 18 20"
                           Stroke="{StaticResource PrimaryBrush}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                           Width="16" Height="16" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Center" />
-                    <TextBlock Text="Settings &amp; Environment" FontWeight="SemiBold" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center" />
-                    <TextBlock Text="— Gradle user home, ignore list, build verification" FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="8,0,0,0" VerticalAlignment="Center" />
+                    <TextBlock Text="Settings &amp; Environment" FontWeight="Bold" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                    <TextBlock Text="— Gradle user home, ignore list, build verification" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="8,0,0,0" VerticalAlignment="Center" />
                 </StackPanel>
             </Expander.Header>
 
@@ -202,11 +202,11 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="Discovered Projects" FontWeight="SemiBold" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" />
-                            <TextBlock Text=" — Select items to update or inspect compatibility" FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="6,0,0,0" />
+                            <TextBlock Text="Discovered Projects" FontWeight="Bold" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" />
+                            <TextBlock Text=" — Select items to update or inspect compatibility" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="6,0,0,0" />
                         </StackPanel>
                         <TextBlock Grid.Column="1" Text="Double-click Target column to customize individual version"
-                                   FontSize="11" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
+                                   FontSize="11" FontWeight="Medium" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
                     </Grid>
                 </Border>
 
@@ -374,24 +374,22 @@
                             <Path Data="M 4 6 L 10 12 L 4 18 M 12 18 L 20 18" Stroke="{StaticResource TerminalAccentBrush}"
                                   StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                                   Width="14" Height="14" Stretch="Uniform" Margin="0,0,7,0" VerticalAlignment="Center" />
-                            <TextBlock Text="Execution &amp; Diagnostic Log" FontSize="11" FontWeight="SemiBold"
-                                       Foreground="#94A3B8" VerticalAlignment="Center" />
+                            <TextBlock Text="Execution &amp; Diagnostic Log" FontSize="11" FontWeight="Bold"
+                                       Foreground="#F1F5F9" VerticalAlignment="Center" />
                         </StackPanel>
 
                         <!-- Clear Log Button -->
                         <Button Grid.Column="1" Content="Clear log" Click="ClearLog_Click"
-                                Background="Transparent" Foreground="#94A3B8" BorderThickness="0"
-                                Padding="8,2" FontSize="11" Cursor="Hand" />
+                                Background="Transparent" Foreground="#CBD5E1" BorderThickness="0"
+                                Padding="8,2" FontSize="11" FontWeight="Medium" Cursor="Hand" />
                     </Grid>
                 </Border>
 
                 <!-- Terminal TextBox -->
                 <TextBox x:Name="LogBox" Grid.Row="1" IsReadOnly="True"
-                         FontFamily="{StaticResource MonoFont}" FontSize="12"
-                         Foreground="{StaticResource TerminalTextBrush}" Background="Transparent"
-                         BorderThickness="0" Padding="12,8"
+                         Style="{StaticResource TerminalTextBoxStyle}"
                          VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
-                         TextWrapping="NoWrap" CaretBrush="{StaticResource TerminalAccentBrush}" />
+                         TextWrapping="NoWrap" />
             </Grid>
         </Border>
 
@@ -414,14 +412,14 @@
                             <ScaleTransform ScaleX="1" ScaleY="1" />
                         </Ellipse.RenderTransform>
                     </Ellipse>
-                    <TextBlock x:Name="StatusText" Foreground="{StaticResource TextSecondaryBrush}"
-                               FontSize="12" FontWeight="Medium"
+                    <TextBlock x:Name="StatusText" Foreground="{StaticResource TextPrimaryBrush}"
+                               FontSize="12" FontWeight="SemiBold"
                                Text="Choose your projects folder, then click Scan." VerticalAlignment="Center" />
                 </StackPanel>
 
                 <!-- Right: Active Home Path Note -->
-                <TextBlock x:Name="HomeLabel" Grid.Column="1" Foreground="{StaticResource TextMutedBrush}"
-                           FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Right" />
+                <TextBlock x:Name="HomeLabel" Grid.Column="1" Foreground="{StaticResource TextSecondaryBrush}"
+                           FontSize="11" FontWeight="Medium" VerticalAlignment="Center" HorizontalAlignment="Right" />
             </Grid>
         </StackPanel>
     </Grid>

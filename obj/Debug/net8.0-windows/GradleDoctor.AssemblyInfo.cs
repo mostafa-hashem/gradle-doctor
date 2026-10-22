@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("GradleDoctor")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f65d01c44614ec218a0745e02b3e1b323f0509ae")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+adbd4cd02a07d066b4fb9ad365602e7e38a4b595")]
 [assembly: System.Reflection.AssemblyProductAttribute("GradleDoctor")]
 [assembly: System.Reflection.AssemblyTitleAttribute("GradleDoctor")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
