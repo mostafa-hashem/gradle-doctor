@@ -81,7 +81,7 @@ The application never commits to Git and does not modify a project until you con
 
 - Dry run reports planned changes without writing anything.
 - Updates `distributionUrl` in the Gradle wrapper properties.
-- Adds or updates `distributionSha256Sum` when a checksum is available.
+- Adds or updates `distributionSha256Sum` using distribution-matching checksums (`all` vs `bin`) to prevent wrapper verification errors during builds.
 - Updates recognized AGP declarations in build scripts and version catalogs.
 - Creates `.gradledoctor.bak` backups next to every modified file.
 - Can run a Gradle task after updating and automatically restore backups if the build fails.
@@ -92,16 +92,17 @@ The application never commits to Git and does not modify a project until you con
 - Pre-downloads a Gradle distribution into the selected Gradle home without changing the project.
 - Lists unused Gradle distributions and version caches with their sizes.
 - Protects Gradle versions used by scanned projects from cleanup.
-- Supports permanent deletion or sending items to the Recycle Bin.
+- Supports permanent deletion or sending items to the Recycle Bin with thread-safe execution.
 - Stops Gradle daemons for the scanned projects.
 
 ### Desktop experience
 
 - Light, Dark, and System themes.
+- Real-time bidirectional target synchronization between toolbar picker, project selection, and table cell edits.
 - Search and filter discovered projects.
 - Details panel for the selected project.
-- Live execution log with copy, save, and clear actions.
-- Busy overlay with cancellation support.
+- Live execution log with auto-expansion during updates and copy, save, and clear actions.
+- Non-blocking floating progress card with real-time percentage, project counter, live task status, minimization, and drag-and-drop repositioning.
 - Keyboard shortcuts for the common workflow.
 
 ---
@@ -178,9 +179,11 @@ Use the search box and type filter to narrow the list. Select a row to inspect i
 
 ### 3. Set a target
 
-Enter a target Gradle version in **Target Gradle**, choose one from the version picker, or use the default target from Settings.
+Enter a target Gradle version in **Target Gradle**, choose one from the version picker dropdown, or use the default target from Settings.
 
-Click **Set target** to apply it to selected projects. You can also edit the **Target** column for individual projects.
+- Picking or entering a target version automatically updates and recalculates compatibility for all selected projects in real time.
+- Selecting any project row in the table or editing its **Target** column syncs the toolbar version picker to match.
+- Click **Set target** at any time to re-apply the toolbar target to selected projects.
 
 ### 4. Run a dry run
 
