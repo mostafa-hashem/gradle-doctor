@@ -1,5 +1,5 @@
 {
-  "note": "Starter rules written from memory. VERIFY against the official Android Gradle Plugin release notes before trusting, and edit freely (use the 'Edit compatibility rules' button in the app).",
+  "note": "AGP/Gradle compatibility matrix updated for AGP 9.4 (Gradle 9.6.0). AGP 8.0+ requires JDK 17, AGP 9.x requires JDK 17. You can edit this file from the app; changes apply on the next Dry Run / Apply.",
   "agpMinGradle": {
     "7.0": "7.0",
     "7.1": "7.2",
@@ -19,9 +19,54 @@
     "8.10": "8.11.1",
     "8.11": "8.13",
     "8.12": "8.13",
-    "8.13": "8.13"
+    "8.13": "8.13",
+    "9.0": "9.1.0",
+    "9.1": "9.3.1",
+    "9.2": "9.4.1",
+    "9.3": "9.5.0",
+    "9.4": "9.6.0"
+  },
+  "agpDefaultGradle": {
+    "7.0": "7.0.2",
+    "7.1": "7.2",
+    "7.2": "7.3.3",
+    "7.3": "7.4",
+    "7.4": "7.5",
+    "8.0": "8.0",
+    "8.1": "8.0",
+    "8.2": "8.2",
+    "8.3": "8.4",
+    "8.4": "8.6",
+    "8.5": "8.7",
+    "8.6": "8.7",
+    "8.7": "8.9",
+    "8.8": "8.10.2",
+    "8.9": "8.11.1",
+    "8.10": "8.11.1",
+    "8.11": "8.13",
+    "8.12": "8.13",
+    "8.13": "8.13",
+    "9.0": "9.1.0",
+    "9.1": "9.3.1",
+    "9.2": "9.4.1",
+    "9.3": "9.5.0",
+    "9.4": "9.6.0"
   },
   "gradleMinAgp": {
-    "9.0": "8.13"
+    "9.0": "8.13",
+    "9.1": "8.13",
+    "9.2": "8.13",
+    "9.3": "8.13",
+    "9.4": "8.13",
+    "9.5": "8.13",
+    "9.6": "8.13"
+  },
+  "agpMinJdk": {
+    "7.0": 11,
+    "7.4": 11,
+    "8.0": 17,
+    "8.13": 17,
+    "9.0": 17,
+    "9.4": 17
   }
 }

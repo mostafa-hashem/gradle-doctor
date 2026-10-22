@@ -76,6 +76,10 @@ public class AppSettings
     public string GradleHome { get; set; } = "";          // empty = auto-detect
     public string SkipFolders { get; set; } = DefaultSkipFolders;
     public string KeepVersions { get; set; } = "";        // extra versions never deleted
+    public string DefaultGradleVersion { get; set; } = ""; // empty = latest stable
+    public string ThemeMode { get; set; } = "Light";       // Light, Dark, System
+    public bool UseRecycleBin { get; set; } = true;
+    public bool AutoDownload { get; set; } = true;
     public bool VerifyBuild { get; set; } = false;
     public bool UpdateAgp { get; set; } = true;
     public string VerifyTask { get; set; } = "assembleDebug";
@@ -108,7 +112,9 @@ public class Compat
 {
     public string Note { get; set; } = "";
     public Dictionary<string, string> AgpMinGradle { get; set; } = new();
+    public Dictionary<string, string> AgpDefaultGradle { get; set; } = new();
     public Dictionary<string, string> GradleMinAgp { get; set; } = new();
+    public Dictionary<string, int> AgpMinJdk { get; set; } = new();
 
     public static string UserFile => System.IO.Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GradleDoctor", "compat.json");
@@ -133,7 +139,7 @@ public class Compat
         else File.WriteAllText(UserFile, "{\n  \"agpMinGradle\": {},\n  \"gradleMinAgp\": {}\n}\n");
     }
 
-    static string MajorMinor(string v)
+    internal static string MajorMinor(string v)
     {
         var p = v.Split('.');
         return p.Length >= 2 ? $"{p[0]}.{p[1]}" : v;
@@ -159,48 +165,55 @@ public class Compat
         return string.Join("; ", msgs);
     }
 
-    /// Finds the best compatible AGP version for a target Gradle version.
+    /// Finds the newest AGP that is compatible with the target Gradle version.
     public string BestAgpForGradle(string gradle, string currentAgp = "-")
     {
         var cmp = Comparer<string>.Create(ProjectScanner.CompareVersions);
+        var candidates = AgpMinGradle
+            .Where(kv => ProjectScanner.CompareVersions(gradle, kv.Value) >= 0)
+            .OrderByDescending(kv => kv.Key, cmp)
+            .ToList();
 
-        // If current AGP is valid and already compatible with target Gradle, keep it!
-        if (currentAgp != "-" && !string.IsNullOrWhiteSpace(currentAgp))
+        var best = candidates.Count > 0 ? NormalizeAgp(candidates[0].Key) : null;
+
+        if (!string.IsNullOrWhiteSpace(currentAgp) && currentAgp != "-")
         {
-            var warn = Check(currentAgp, gradle);
-            if (string.IsNullOrEmpty(warn)) return currentAgp;
+            var currentOk = string.IsNullOrEmpty(Check(currentAgp, gradle));
+            if (best == null) return currentAgp;
+            if (currentOk && ProjectScanner.CompareVersions(currentAgp, best) >= 0) return currentAgp;
+            if (currentOk && ProjectScanner.CompareVersions(currentAgp, "9.0") < 0 &&
+                ProjectScanner.CompareVersions(best, "9.0") >= 0) return best;
         }
 
-        // Look for minimum AGP required by this Gradle in gradleMinAgp
-        string? minAgpReq = null;
-        foreach (var k in GradleMinAgp.Keys.Where(k => ProjectScanner.CompareVersions(gradle, k) >= 0).OrderByDescending(k => k, cmp))
+        return best ?? (currentAgp != "-" ? currentAgp : "8.7.0");
+    }
+
+    public string? BestGradleForAgp(string agp)
+    {
+        var key = MajorMinor(agp);
+        if (AgpDefaultGradle.TryGetValue(key, out var exact)) return exact;
+        if (AgpMinGradle.TryGetValue(key, out var min)) return min;
+        return null;
+    }
+
+    public int? MinJdkForAgp(string agp)
+    {
+        return AgpMinJdk.TryGetValue(MajorMinor(agp), out var jdk) ? jdk : null;
+    }
+
+    public static bool IsMajorUpgrade(string from, string to) =>
+        int.TryParse(from.Split('.')[0], out var a) && int.TryParse(to.Split('.')[0], out var b) && b > a;
+
+    static string NormalizeAgp(string value)
+    {
+        var core = value.Split('-')[0];
+        var parts = core.Split('.');
+        return parts.Length switch
         {
-            minAgpReq = GradleMinAgp[k];
-            break;
-        }
-
-        if (minAgpReq != null)
-        {
-            if (currentAgp != "-" && ProjectScanner.CompareVersions(currentAgp, minAgpReq) >= 0)
-                return currentAgp;
-            return minAgpReq.Count(c => c == '.') == 1 ? minAgpReq + ".0" : minAgpReq;
-        }
-
-        // Otherwise find highest AGP supported by this Gradle in agpMinGradle
-        string? best = null;
-        foreach (var (agpKey, minG) in AgpMinGradle.OrderByDescending(kv => kv.Key, cmp))
-        {
-            if (ProjectScanner.CompareVersions(gradle, minG) >= 0)
-            {
-                best = agpKey;
-                break;
-            }
-        }
-
-        if (best != null)
-            return best.Count(c => c == '.') == 1 ? best + ".0" : best;
-
-        return currentAgp != "-" ? currentAgp : "8.7.0";
+            1 => core + ".0.0",
+            2 => core + ".0",
+            _ => value
+        };
     }
 }
 
@@ -226,17 +239,7 @@ public static class ProjectScanner
         ".cxx", ".externalNativeBuild", "bin", "obj", ".vscode", "DerivedData"
     };
 
-    static bool ContainsForbiddenSegment(string path, ISet<string> skip)
-    {
-        var parts = path.Split(new[] { System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar }, StringSplitOptions.RemoveEmptyEntries);
-        foreach (var p in parts)
-        {
-            if (DefaultSkipSet.Contains(p) || skip.Contains(p)) return true;
-        }
-        return false;
-    }
-
-    public static List<ProjectInfo> Scan(string root, ISet<string> skip)
+    public static List<ProjectInfo> Scan(string root, ISet<string> skip, CancellationToken ct = default)
     {
         var result = new List<ProjectInfo>();
         var stack = new Stack<string>();
@@ -247,12 +250,10 @@ public static class ProjectScanner
 
         while (stack.Count > 0)
         {
+            ct.ThrowIfCancellationRequested();
             var dir = stack.Pop();
 
-            // 1. Skip if dir path contains any forbidden segment (e.g. ephemeral, .plugin_symlinks)
-            if (ContainsForbiddenSegment(dir, allSkip)) continue;
-
-            // 2. Check if this folder is a Flutter App Root
+            // 1. Check if this folder is a Flutter App Root
             var pubspec = System.IO.Path.Combine(dir, "pubspec.yaml");
             if (File.Exists(pubspec))
             {
@@ -325,88 +326,39 @@ public static class ProjectScanner
             info.Name = flutterDetected ? parent!.Name : System.IO.Path.GetFileName(dir);
         }
         info.CurrentGradle = ReadVersion(props);
-
-        foreach (var f in new[] { "settings.gradle", "settings.gradle.kts", "build.gradle", "build.gradle.kts" })
-        {
-            var p = System.IO.Path.Combine(dir, f);
-            if (!File.Exists(p)) continue;
-            try
-            {
-                var txt = File.ReadAllText(p);
-                var m = AgpPluginRx.Match(txt);
-                if (!m.Success) m = AgpClasspathRx.Match(txt);
-                if (m.Success) { info.Agp = m.Groups["v"].Value; break; }
-            }
-            catch { }
-        }
+        info.Agp = AgpResolver.Detect(dir)?.Version ?? "-";
         return info;
     }
 
-
     static string BakPath(ProjectInfo p) => p.PropsFile + ".gradledoctor.bak";
 
-    /// Rewrites distributionUrl to the target version. Keeps a .bak copy. Returns true if changed.
-    public static bool UpdateWrapper(ProjectInfo p, string target)
+    /// Rewrites distributionUrl to the target version and optionally adds its checksum.
+    /// Keeps the original .bak copy. Returns true if changed.
+    public static bool UpdateWrapper(ProjectInfo p, string target, string? sha256 = null)
     {
         var text = File.ReadAllText(p.PropsFile);
         var updated = VersionRx.Replace(text, m => $"gradle-{target}-{m.Groups["t"].Value}.zip");
+
+        var shaLine = new Regex(@"^\s*distributionSha256Sum\s*=.*$", RegexOptions.Multiline);
+        updated = shaLine.Replace(updated, "").TrimEnd();
+        if (!string.IsNullOrWhiteSpace(sha256))
+            updated += Environment.NewLine + $"distributionSha256Sum={sha256}" + Environment.NewLine;
+        else
+            updated += Environment.NewLine;
+
         if (updated == text) return false;
-        File.Copy(p.PropsFile, BakPath(p), overwrite: true);
+        if (!File.Exists(BakPath(p))) File.Copy(p.PropsFile, BakPath(p));
         File.WriteAllText(p.PropsFile, updated);
         p.CurrentGradle = target;
         return true;
     }
 
-    static readonly Regex PluginReplaceRx = new(
-        @"(com\.android\.(?:application|library)[""']\)?\s*(?:version\s*)?[""'])\d+(?:\.\d+)+(?:-[A-Za-z0-9.]+)?([""'])",
-        RegexOptions.Compiled);
-
-    static readonly Regex ClasspathReplaceRx = new(
-        @"(com\.android\.tools\.build:gradle:)\d+(?:\.\d+)+(?:-[A-Za-z0-9.]+)?(?=[""'])",
-        RegexOptions.Compiled);
-
-    static readonly Regex TomlReplaceRx = new(
-        @"^(\s*(?:agp|android(?:GradlePlugin)?|android-gradle-plugin|com-android-application)\s*=\s*[""'])\d+(?:\.\d+)+(?:-[A-Za-z0-9.]+)?([""'])",
-        RegexOptions.Compiled | RegexOptions.Multiline);
-
     /// Updates AGP in settings.gradle, build.gradle, or libs.versions.toml. Keeps .bak copy.
-    public static bool UpdateAgp(ProjectInfo p, string newAgp)
+    public static AgpUpdateResult UpdateAgp(ProjectInfo p, string newAgp)
     {
-        bool changedAny = false;
-        var candidateFiles = new List<string>
-        {
-            System.IO.Path.Combine(p.Path, "settings.gradle"),
-            System.IO.Path.Combine(p.Path, "settings.gradle.kts"),
-            System.IO.Path.Combine(p.Path, "build.gradle"),
-            System.IO.Path.Combine(p.Path, "build.gradle.kts"),
-            System.IO.Path.Combine(p.Path, "gradle", "libs.versions.toml"),
-            System.IO.Path.Combine(p.Path, "app", "build.gradle"),
-            System.IO.Path.Combine(p.Path, "app", "build.gradle.kts")
-        };
-
-        foreach (var file in candidateFiles)
-        {
-            if (!File.Exists(file)) continue;
-            try
-            {
-                var text = File.ReadAllText(file);
-                var updated = PluginReplaceRx.Replace(text, $"${{1}}{newAgp}$2");
-                updated = ClasspathReplaceRx.Replace(updated, $"${{1}}{newAgp}");
-                updated = TomlReplaceRx.Replace(updated, $"${{1}}{newAgp}$2");
-
-                if (updated != text)
-                {
-                    var bak = file + ".gradledoctor.bak";
-                    File.Copy(file, bak, overwrite: true);
-                    File.WriteAllText(file, updated);
-                    changedAny = true;
-                }
-            }
-            catch { }
-        }
-
-        if (changedAny) p.Agp = newAgp;
-        return changedAny;
+        var result = AgpResolver.Update(p.Path, newAgp);
+        if (result.Changed) p.Agp = newAgp;
+        return result;
     }
 
     /// Restores wrapper and any AGP build files from backups.
@@ -417,45 +369,65 @@ public static class ProjectScanner
         {
             File.Copy(bak, p.PropsFile, overwrite: true);
             File.Delete(bak);
-            p.CurrentGradle = ReadVersion(p.PropsFile);
         }
-
-        var candidateFiles = new List<string>
-        {
-            System.IO.Path.Combine(p.Path, "settings.gradle"),
-            System.IO.Path.Combine(p.Path, "settings.gradle.kts"),
-            System.IO.Path.Combine(p.Path, "build.gradle"),
-            System.IO.Path.Combine(p.Path, "build.gradle.kts"),
-            System.IO.Path.Combine(p.Path, "gradle", "libs.versions.toml"),
-            System.IO.Path.Combine(p.Path, "app", "build.gradle"),
-            System.IO.Path.Combine(p.Path, "app", "build.gradle.kts")
-        };
-
-        foreach (var file in candidateFiles)
-        {
-            var fbak = file + ".gradledoctor.bak";
-            if (File.Exists(fbak))
-            {
-                try
-                {
-                    File.Copy(fbak, file, overwrite: true);
-                    File.Delete(fbak);
-                }
-                catch { }
-            }
-        }
+        AgpResolver.Restore(p.Path);
+        p.CurrentGradle = ReadVersion(p.PropsFile);
+        p.Agp = AgpResolver.Detect(p.Path)?.Version ?? "-";
     }
 
-    public static int CompareVersions(string a, string b)
+    /// Compares Gradle/AGP versions with 4 numeric parts, so 9.6 == 9.6.0.
+    /// Pre-release suffixes sort before the final release (9.0-rc-1 < 9.0).
+    public static int CompareVersions(string? a, string? b)
     {
-        static Version P(string s)
+        Parse(a, out var an, out var ap);
+        Parse(b, out var bn, out var bp);
+        for (var i = 0; i < 4; i++)
         {
-            var core = Regex.Match(s ?? "", @"^\d+(\.\d+)*").Value;
-            if (core.Length == 0) return new Version(0, 0);
-            if (!core.Contains('.')) core += ".0";
-            return Version.TryParse(core, out var v) ? v : new Version(0, 0);
+            var c = an[i].CompareTo(bn[i]);
+            if (c != 0) return c;
         }
-        return P(a).CompareTo(P(b));
+
+        if (ap.Count == 0 && bp.Count == 0) return 0;
+        if (ap.Count == 0) return 1;
+        if (bp.Count == 0) return -1;
+
+        for (var i = 0; i < Math.Max(ap.Count, bp.Count); i++)
+        {
+            if (i >= ap.Count) return -1;
+            if (i >= bp.Count) return 1;
+            var x = ap[i];
+            var y = bp[i];
+            var xn = long.TryParse(x, out var nx);
+            var yn = long.TryParse(y, out var ny);
+            var c = xn && yn ? nx.CompareTo(ny) : string.Compare(x, y, StringComparison.OrdinalIgnoreCase);
+            if (c != 0) return c;
+        }
+        return 0;
+    }
+
+    public static string NormalizeVersion(string? value)
+    {
+        Parse(value, out var nums, out var pre);
+        var core = string.Join('.', nums);
+        return pre.Count > 0 ? core + "-" + string.Join('.', pre) : core;
+    }
+
+    static void Parse(string? value, out int[] numbers, out List<string> pre)
+    {
+        numbers = new int[4];
+        pre = new List<string>();
+        var text = (value ?? "").Trim();
+        if (text.Length == 0) return;
+
+        var dash = text.IndexOf('-');
+        var core = dash >= 0 ? text[..dash] : text;
+        var suffix = dash >= 0 ? text[(dash + 1)..] : "";
+        var parts = core.Split('.', StringSplitOptions.RemoveEmptyEntries);
+        for (var i = 0; i < Math.Min(4, parts.Length); i++)
+            if (int.TryParse(parts[i], out var n)) numbers[i] = n;
+
+        if (suffix.Length > 0)
+            pre = suffix.Split(new[] { '.', '-', '_' }, StringSplitOptions.RemoveEmptyEntries).ToList();
     }
 }
 
@@ -528,12 +500,21 @@ public static class GradleCleaner
         return total;
     }
 
-    public static (long, List<string>) Delete(IEnumerable<CleanItem> items)
+    public static (long, List<string>) Delete(IEnumerable<CleanItem> items, bool useRecycleBin = false)
     {
         long freed = 0; var errors = new List<string>();
         foreach (var i in items)
         {
-            try { Directory.Delete(i.Path, recursive: true); freed += i.Size; }
+            try
+            {
+                if (useRecycleBin)
+                    Microsoft.VisualBasic.FileIO.FileSystem.DeleteDirectory(i.Path,
+                        Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
+                        Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+                else
+                    Directory.Delete(i.Path, recursive: true);
+                freed += i.Size;
+            }
             catch (Exception ex) { errors.Add($"{i.Path}: {ex.Message}"); }
         }
         return (freed, errors);
@@ -544,17 +525,29 @@ public static class GradleCleaner
 
 public static class Runner
 {
+    static readonly Regex SafeArgsRx = new(@"^[A-Za-z0-9_:\-. /=\[\]]+$", RegexOptions.Compiled);
+    static readonly Regex LiveLineRx = new(
+        @"^> Task|^BUILD |^FAILURE|^What went wrong|^Caused by|^e: |^error:|^Execution failed|^\* What went wrong",
+        RegexOptions.Compiled);
+
     /// true = success, false = failed/timeout, null = no gradlew.bat (skipped)
     public static async Task<bool?> Gradlew(string dir, string args, string? gradleHome,
-        int timeoutMinutes, Action<string> log)
+        int timeoutMinutes, Action<string> log, CancellationToken ct = default)
     {
-        if (!File.Exists(System.IO.Path.Combine(dir, "gradlew.bat")))
+        var bat = System.IO.Path.Combine(dir, "gradlew.bat");
+        if (!File.Exists(bat))
         {
             log("  gradlew.bat not found, skipped.");
             return null;
         }
 
-        var psi = new ProcessStartInfo("cmd.exe", $"/c gradlew.bat {args}")
+        if (!SafeArgsRx.IsMatch(args))
+        {
+            log("  Refusing to run suspicious Gradle arguments.");
+            return false;
+        }
+
+        var psi = new ProcessStartInfo("cmd.exe", $"/d /s /c \"\"{bat}\" {args}\"")
         {
             WorkingDirectory = dir,
             RedirectStandardOutput = true,
@@ -562,31 +555,53 @@ public static class Runner
             UseShellExecute = false,
             CreateNoWindow = true
         };
-        if (!string.IsNullOrWhiteSpace(gradleHome)) psi.Environment["GRADLE_USER_HOME"] = gradleHome;
+        if (!string.IsNullOrWhiteSpace(gradleHome))
+        {
+            Directory.CreateDirectory(gradleHome);
+            psi.Environment["GRADLE_USER_HOME"] = gradleHome;
+        }
 
-        using var proc = Process.Start(psi)!;
+        using var proc = Process.Start(psi);
+        if (proc == null)
+        {
+            log("  Could not start the Gradle wrapper.");
+            return false;
+        }
+
         var tail = new Queue<string>();
+        var live = 0;
         void H(string? l)
         {
             if (l == null) return;
-            lock (tail) { tail.Enqueue(l); if (tail.Count > 15) tail.Dequeue(); }
+            lock (tail)
+            {
+                tail.Enqueue(l);
+                if (tail.Count > 30) tail.Dequeue();
+            }
+            if (live < 120 && LiveLineRx.IsMatch(l))
+            {
+                live++;
+                log("  | " + l);
+            }
         }
         proc.OutputDataReceived += (_, e) => H(e.Data);
         proc.ErrorDataReceived += (_, e) => H(e.Data);
         proc.BeginOutputReadLine();
         proc.BeginErrorReadLine();
 
-        using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(Math.Max(1, timeoutMinutes)));
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(TimeSpan.FromMinutes(Math.Max(1, timeoutMinutes)));
         try { await proc.WaitForExitAsync(cts.Token); }
         catch (OperationCanceledException)
         {
             try { proc.Kill(true); } catch { }
-            log("  timed out.");
+            log(ct.IsCancellationRequested ? "  cancelled." : "  timed out.");
             return false;
         }
 
-        bool ok = proc.ExitCode == 0;
-        if (!ok) lock (tail) foreach (var l in tail) log("  | " + l);
+        var ok = proc.ExitCode == 0;
+        if (!ok && !ct.IsCancellationRequested)
+            lock (tail) foreach (var l in tail) log("  | " + l);
         return ok;
     }
 }

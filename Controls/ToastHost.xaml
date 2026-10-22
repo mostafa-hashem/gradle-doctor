@@ -1,0 +1,56 @@
+<UserControl x:Class="GradleDoctor.ToastHost"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             IsHitTestVisible="True">
+    <ItemsControl x:Name="Items">
+        <ItemsControl.ItemTemplate>
+            <DataTemplate>
+                <Border Background="{DynamicResource CardBgBrush}" BorderBrush="{DynamicResource CardBorderBrush}"
+                        BorderThickness="1" CornerRadius="10" Padding="12,9" Margin="0,0,0,8"
+                        MinWidth="300" MaxWidth="430" Opacity="0" Loaded="Toast_Loaded"
+                        Effect="{StaticResource CardShadow}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border x:Name="IconBg" Width="30" Height="30" CornerRadius="8"
+                                Background="{DynamicResource PrimaryLightBrush}" Margin="0,0,10,0">
+                            <TextBlock x:Name="IconText" Text="&#xE946;" FontFamily="Segoe MDL2 Assets"
+                                       FontSize="14" Foreground="{DynamicResource PrimaryBrush}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+
+                        <TextBlock Grid.Column="1" Text="{Binding Message}" TextWrapping="Wrap"
+                                   VerticalAlignment="Center" FontSize="12"
+                                   Foreground="{DynamicResource TextPrimaryBrush}" />
+
+                        <Button Grid.Column="2" Content="&#xE711;" FontFamily="Segoe MDL2 Assets"
+                                Style="{StaticResource GhostButtonStyle}" Width="24" Height="24"
+                                Padding="0" Margin="8,0,0,0" Tag="{Binding}" Click="Close_Click"
+                                ToolTip="Dismiss" />
+                    </Grid>
+                </Border>
+                <DataTemplate.Triggers>
+                    <DataTrigger Binding="{Binding Kind}" Value="Success">
+                        <Setter TargetName="IconBg" Property="Background" Value="{DynamicResource SuccessLightBrush}" />
+                        <Setter TargetName="IconText" Property="Text" Value="&#xE73E;" />
+                        <Setter TargetName="IconText" Property="Foreground" Value="{DynamicResource SuccessBrush}" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding Kind}" Value="Warning">
+                        <Setter TargetName="IconBg" Property="Background" Value="{DynamicResource WarningLightBrush}" />
+                        <Setter TargetName="IconText" Property="Text" Value="&#xE7BA;" />
+                        <Setter TargetName="IconText" Property="Foreground" Value="{DynamicResource WarningBrush}" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding Kind}" Value="Error">
+                        <Setter TargetName="IconBg" Property="Background" Value="{DynamicResource DangerLightBrush}" />
+                        <Setter TargetName="IconText" Property="Text" Value="&#xEA39;" />
+                        <Setter TargetName="IconText" Property="Foreground" Value="{DynamicResource DangerBrush}" />
+                    </DataTrigger>
+                </DataTemplate.Triggers>
+            </DataTemplate>
+        </ItemsControl.ItemTemplate>
+    </ItemsControl>
+</UserControl>

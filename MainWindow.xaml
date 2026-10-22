@@ -1,438 +1,660 @@
 <Window x:Class="GradleDoctor.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Gradle Doctor" Height="820" Width="1200"
-        MinHeight="680" MinWidth="1000"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        xmlns:local="clr-namespace:GradleDoctor"
+        Title="Gradle Doctor"
+        Height="880" Width="1320"
+        MinHeight="720" MinWidth="1120"
+        WindowStyle="None"
+        ResizeMode="CanResize"
         WindowStartupLocation="CenterScreen"
-        Background="{StaticResource WindowBgBrush}"
+        Background="{DynamicResource WindowBgBrush}"
         TextOptions.TextFormattingMode="Display"
         TextOptions.TextRenderingMode="ClearType"
-        UseLayoutRounding="True">
+        UseLayoutRounding="True"
+        KeyDown="Window_KeyDown">
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="0" ResizeBorderThickness="6"
+                            GlassFrameThickness="0" CornerRadius="0"
+                            UseAeroCaptionButtons="False" />
+    </shell:WindowChrome.WindowChrome>
 
-    <Grid Margin="16,14,16,12">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" /> <!-- 0: Brand Header -->
-            <RowDefinition Height="Auto" /> <!-- 1: Folder Selection Card -->
-            <RowDefinition Height="Auto" /> <!-- 2: Settings Expander Card -->
-            <RowDefinition Height="Auto" /> <!-- 3: Command Actions Bar Card -->
-            <RowDefinition Height="*" />    <!-- 4: Projects DataGrid Card -->
-            <RowDefinition Height="165" />  <!-- 5: Terminal Output Console Card -->
-            <RowDefinition Height="Auto" /> <!-- 6: Progress & Status Footer -->
-        </Grid.RowDefinitions>
+    <Border x:Name="WindowRoot" Background="{DynamicResource WindowBgBrush}"
+            BorderBrush="{DynamicResource WindowBorderBrush}" BorderThickness="1">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="44" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
 
-        <!-- ROW 0: APP BRAND HEADER -->
-        <Grid Grid.Row="0" Margin="0,0,0,14">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
+            <!-- ================= CUSTOM TITLE BAR ================= -->
+            <Border x:Name="TitleBar" Grid.Row="0" Background="{DynamicResource TitleBarBrush}"
+                    BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1"
+                    MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
 
-            <!-- Brand Icon -->
-            <Border Grid.Column="0" Width="40" Height="40" CornerRadius="10" Background="{StaticResource PrimaryBrush}" Margin="0,0,12,0">
-                <Border.Effect>
-                    <DropShadowEffect Color="#2563EB" Opacity="0.3" BlurRadius="8" ShadowDepth="2" Direction="270" />
-                </Border.Effect>
-                <!-- Medical Cross / Shield / Tech Icon -->
-                <Path Data="M 10 18 L 10 22 L 14 22 L 14 18 L 18 18 L 18 14 L 14 14 L 14 10 L 10 10 L 10 14 L 6 14 L 6 18 Z"
-                      Fill="#FFFFFF" Stretch="Uniform" Width="20" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0">
+                        <Border Width="26" Height="26" CornerRadius="7" Background="{DynamicResource AccentGradientBrush}" Margin="0,0,9,0">
+                            <Path Data="M 10 18 L 10 22 L 14 22 L 14 18 L 18 18 L 18 14 L 14 14 L 14 10 L 10 10 L 10 14 L 6 14 L 6 18 Z"
+                                  Fill="#FFFFFF" Stretch="Uniform" Width="13" Height="13"
+                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <TextBlock Text="Gradle Doctor" FontSize="12.5" FontWeight="Bold"
+                                   Foreground="{DynamicResource TitleBarTextBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="  /  Gradle &amp; AGP manager" FontSize="11"
+                                   Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <TextBlock Grid.Column="1" Text="Compatibility-first wrapper updates"
+                               FontSize="11" Foreground="{DynamicResource TextMutedBrush}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center"
+                                shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                        <ComboBox x:Name="ThemeCombo" Width="96" Height="28" Margin="0,0,10,0"
+                                  VerticalAlignment="Center" SelectionChanged="ThemeCombo_SelectionChanged"
+                                  ToolTip="Application theme">
+                            <ComboBoxItem Content="Light" Tag="Light" />
+                            <ComboBoxItem Content="Dark" Tag="Dark" />
+                            <ComboBoxItem Content="System" Tag="System" />
+                        </ComboBox>
+                        <Button x:Name="MinBtn" Content="&#xE921;" FontFamily="Segoe MDL2 Assets"
+                                Style="{StaticResource TitleBarButtonStyle}" Click="Minimize_Click" ToolTip="Minimize" />
+                        <Button x:Name="MaxBtn" Content="&#xE922;" FontFamily="Segoe MDL2 Assets"
+                                Style="{StaticResource TitleBarButtonStyle}" Click="Maximize_Click" ToolTip="Maximize" />
+                        <Button Content="&#xE8BB;" FontFamily="Segoe MDL2 Assets"
+                                Style="{StaticResource CloseButtonStyle}" Click="Close_Click" ToolTip="Close" />
+                    </StackPanel>
+                </Grid>
             </Border>
 
-            <!-- Brand Title & Subtitle -->
-            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="Gradle Doctor" FontSize="19" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" />
-                    <Border CornerRadius="4" Background="#DCFCE7" Padding="6,1" Margin="8,2,0,0" VerticalAlignment="Center">
-                        <TextBlock Text="v1.0" FontSize="10" FontWeight="Bold" Foreground="#15803D" />
-                    </Border>
-                </StackPanel>
-                <TextBlock Text="Fast Gradle &amp; AGP version manager with automated compatibility validation"
-                           FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,1,0,0" />
-            </StackPanel>
+            <!-- ================= BODY ================= -->
+            <Grid Grid.Row="1" Margin="18,14,18,14">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" /> <!-- Brand header -->
+                    <RowDefinition Height="Auto" /> <!-- Folder -->
+                    <RowDefinition Height="Auto" /> <!-- Settings -->
+                    <RowDefinition Height="Auto" /> <!-- Toolbar -->
+                    <RowDefinition Height="*" />    <!-- Projects + details -->
+                    <RowDefinition Height="170" />  <!-- Terminal -->
+                    <RowDefinition Height="Auto" /> <!-- Footer -->
+                </Grid.RowDefinitions>
 
-            <!-- Header Badges -->
-            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                <Border CornerRadius="14" Background="#FFFFFF" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" Padding="12,5" Margin="0,0,8,0">
-                    <StackPanel Orientation="Horizontal">
-                        <Path Data="M 12 2 C 8.13 2 5 5.13 5 9 C 5 14.25 12 22 12 22 C 12 22 19 14.25 19 9 C 19 5.13 15.87 2 12 2 Z"
-                              Fill="{StaticResource PrimaryBrush}" Width="11" Height="11" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center" />
-                        <TextBlock x:Name="HomeBadgeText" Text="Gradle Home Active" FontSize="11" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" />
+                <!-- Brand header -->
+                <Grid Grid.Row="0" Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Width="46" Height="46" CornerRadius="12" Background="{DynamicResource AccentGradientBrush}" Margin="0,0,13,0">
+                        <Border.Effect>
+                            <DropShadowEffect Color="#2563EB" Opacity="0.28" BlurRadius="12" ShadowDepth="3" Direction="270" />
+                        </Border.Effect>
+                        <Path Data="M 10 18 L 10 22 L 14 22 L 14 18 L 18 18 L 18 14 L 14 14 L 14 10 L 10 10 L 10 14 L 6 14 L 6 18 Z"
+                              Fill="#FFFFFF" Stretch="Uniform" Width="22" Height="22"
+                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Gradle Doctor" FontSize="21" FontWeight="Bold"
+                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+                            <Border CornerRadius="5" Background="{DynamicResource SuccessLightBrush}" Padding="7,2" Margin="9,3,0,0">
+                                <TextBlock Text="1.1" FontSize="10" FontWeight="Bold"
+                                           Foreground="{DynamicResource SuccessForegroundBrush}" />
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Text="Compatibility-aware Gradle &amp; Android Gradle Plugin updates for Android and Flutter projects."
+                                   FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border CornerRadius="15" Background="{DynamicResource CardBgBrush}" BorderBrush="{DynamicResource CardBorderBrush}"
+                                BorderThickness="1" Padding="12,6" Margin="0,0,8,0">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Data="M 12 2 C 8.13 2 5 5.13 5 9 C 5 14.25 12 22 12 22 C 12 22 19 14.25 19 9 C 19 5.13 15.87 2 12 2 Z"
+                                      Fill="{DynamicResource PrimaryBrush}" Width="11" Height="11" Stretch="Uniform"
+                                      Margin="0,0,6,0" VerticalAlignment="Center" />
+                                <TextBlock x:Name="HomeBadgeText" Text="Gradle Home" FontSize="11" FontWeight="Bold"
+                                           Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+                        <Border CornerRadius="15" Background="{DynamicResource PrimaryLightBrush}" BorderBrush="{DynamicResource PrimaryBrush}"
+                                BorderThickness="1" Padding="12,6">
+                            <TextBlock x:Name="ProjectCountBadge" Text="0 projects" FontSize="11" FontWeight="Bold"
+                                       Foreground="{DynamicResource PrimaryBrush}" />
+                        </Border>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Folder card -->
+                <Border Grid.Row="1" Style="{StaticResource CardStyle}" Padding="12,10" Margin="0,0,0,10">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+                            <Path Data="M 2 4 C 2 2.9 2.9 2 4 2 L 8 2 L 10 4 L 18 4 C 19.1 4 20 4.9 20 6 L 20 16 C 20 17.1 19.1 18 18 18 L 4 18 C 2.9 18 2 17.1 2 16 L 2 4 Z"
+                                  Fill="{DynamicResource PrimaryBrush}" Width="16" Height="16" Stretch="Uniform"
+                                  Margin="0,0,8,0" VerticalAlignment="Center" />
+                            <TextBlock Text="Projects folder" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <TextBox x:Name="PathBox" Grid.Column="1" IsReadOnly="True" VerticalContentAlignment="Center"
+                                 Padding="10,7" ToolTip="Folder containing your Android or Flutter projects" />
+                        <Button Grid.Column="2" Content="Browse..." Margin="8,0,0,0" Padding="16,7" Click="Browse_Click" />
+                        <Button x:Name="ScanBtn" Grid.Column="3" Content="Scan projects" Margin="8,0,0,0"
+                                Padding="18,7" Style="{StaticResource PrimaryButtonStyle}" Click="Scan_Click" />
+                    </Grid>
+                </Border>
+
+                <!-- Settings -->
+                <Expander Grid.Row="2" Margin="0,0,0,10">
+                    <Expander.Header>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Path Data="M 3 6 L 15 6 M 3 12 L 21 12 M 3 18 L 9 18 M 15 4 L 15 8 M 9 10 L 9 14 M 18 16 L 18 20"
+                                  Stroke="{DynamicResource PrimaryBrush}" StrokeThickness="2"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                  Width="17" Height="17" Stretch="Uniform" Margin="0,0,9,0" VerticalAlignment="Center" />
+                            <TextBlock Text="Settings &amp; environment" FontWeight="Bold" FontSize="13"
+                                       Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                            <TextBlock Text="Gradle home, scan filters, build verification" FontSize="11.5"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" Margin="9,0,0,0"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Expander.Header>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Gradle home" FontWeight="Medium"
+                                   Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,10,8" />
+                        <TextBox x:Name="GradleHomeBox" Grid.Row="0" Grid.Column="1" Margin="0,0,0,8"
+                                 ToolTip="Empty = auto-detect (GRADLE_USER_HOME or %USERPROFILE%\.gradle)" />
+                        <Button Grid.Row="0" Grid.Column="2" Content="Browse..." Margin="8,0,0,8" Padding="12,6" Click="BrowseHome_Click" />
+                        <Button Grid.Row="0" Grid.Column="3" Content="Auto" Margin="8,0,0,8" Padding="12,6" Click="ResetHome_Click" />
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Skip folders" FontWeight="Medium"
+                                   Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,10,8" />
+                        <TextBox x:Name="SkipBox" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,0,0,8"
+                                 ToolTip="Comma-separated folder names ignored during project scanning" />
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Always keep" FontWeight="Medium"
+                                   Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,10,8" />
+                        <TextBox x:Name="KeepBox" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,0,0,8"
+                                 ToolTip="Comma-separated Gradle versions that cleanup must never delete" />
+
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Default target" FontWeight="Medium"
+                                   Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,10,8" />
+                        <Grid Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <ComboBox x:Name="DefaultTargetBox" Grid.Column="0" ToolTip="Default Gradle version used for new scans" />
+                            <Button x:Name="UseDefaultBtn" Grid.Column="1" Content="Use as target for selected"
+                                    Margin="8,0,0,0" Padding="12,6" Click="UseDefault_Click" />
+                            <TextBlock Grid.Column="2" Text="The latest stable release is used when no default is chosen."
+                                       FontSize="11" Foreground="{DynamicResource TextMutedBrush}" Margin="12,0,0,0"
+                                       VerticalAlignment="Center" />
+                        </Grid>
+
+                        <StackPanel Grid.Row="4" Grid.ColumnSpan="4" Orientation="Horizontal" Margin="0,4,0,0">
+                            <CheckBox x:Name="UpdateAgpCheck" Content="Auto-update AGP to newest compatible"
+                                      IsChecked="True" VerticalAlignment="Center"
+                                      ToolTip="Detects AGP in settings/build files and libs.versions.toml, then suggests the newest compatible version" />
+                            <CheckBox x:Name="VerifyCheck" Content="Build after update and roll back on failure"
+                                      VerticalAlignment="Center" Margin="22,0,0,0" />
+                            <TextBlock Text="Task" FontWeight="Medium" Foreground="{DynamicResource TextSecondaryBrush}"
+                                       VerticalAlignment="Center" Margin="22,0,7,0" />
+                            <TextBox x:Name="TaskBox" Width="132" Padding="8,5" />
+                            <TextBlock Text="Timeout" FontWeight="Medium" Foreground="{DynamicResource TextSecondaryBrush}"
+                                       VerticalAlignment="Center" Margin="14,0,7,0" />
+                            <TextBox x:Name="TimeoutBox" Width="56" Padding="8,5" HorizontalContentAlignment="Center" />
+                            <TextBlock Text="min" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" Margin="4,0,0,0" />
+                            <Button Content="Edit compatibility rules" Margin="18,0,0,0" Padding="12,6" Click="EditCompat_Click" />
+                        </StackPanel>
+                    </Grid>
+                </Expander>
+
+                <!-- Toolbar -->
+                <Border Grid.Row="3" Style="{StaticResource CardStyle}" Padding="12,9" Margin="0,0,0,10">
+                    <WrapPanel VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+                            <TextBlock Text="Target Gradle" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"
+                                       VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <TextBox x:Name="TargetBox" Width="104" Padding="8,6" FontFamily="{DynamicResource MonoFont}"
+                                     ToolTip="Target Gradle version, e.g. 9.8.2" />
+                            <ComboBox x:Name="VersionPicker" Width="124" Margin="6,0,0,0"
+                                      SelectionChanged="VersionPicker_SelectionChanged"
+                                      ToolTip="Pick a stable, installed, or project version" />
+                            <Button x:Name="RefreshVersionsBtn" Content="Refresh" Margin="6,0,0,0" Padding="10,6" Click="RefreshVersions_Click"
+                                    ToolTip="Fetch the latest stable Gradle versions" />
+                            <Button x:Name="DownloadBtn" Content="Prepare" Margin="6,0,0,0" Padding="10,6" Click="Download_Click"
+                                    ToolTip="Download the target distribution into the selected Gradle home" />
+                        </StackPanel>
+
+                        <Rectangle Width="1" Height="24" Fill="{DynamicResource DividerBrush}" Margin="0,0,12,0" VerticalAlignment="Center" />
+                        <Button x:Name="SelAllBtn" Content="Select all" Margin="0,0,6,0" Click="SelectAll_Click" />
+                        <Button x:Name="SelNoneBtn" Content="Select none" Margin="0,0,6,0" Click="SelectNone_Click" />
+                        <Button x:Name="SetTargetBtn" Content="Set target" Margin="0,0,12,0" Click="SetTarget_Click" />
+                        <Rectangle Width="1" Height="24" Fill="{DynamicResource DividerBrush}" Margin="0,0,12,0" VerticalAlignment="Center" />
+                        <Button x:Name="DryBtn" Content="Dry run" Margin="0,0,6,0" Padding="16,7" Click="DryRun_Click" />
+                        <Button x:Name="ApplyBtn" Content="Apply selected" Margin="0,0,12,0" Padding="16,7"
+                                Style="{StaticResource SuccessButtonStyle}" Click="Apply_Click" />
+                        <Rectangle Width="1" Height="24" Fill="{DynamicResource DividerBrush}" Margin="0,0,12,0" VerticalAlignment="Center" />
+                        <Button x:Name="CleanBtn" Content="Clean old versions..." Margin="0,0,6,0" Click="Clean_Click" />
+                        <Button x:Name="StopBtn" Content="Stop daemons" Padding="14,7" Style="{StaticResource DangerButtonStyle}" Click="Stop_Click" />
+                    </WrapPanel>
+                </Border>
+
+                <!-- Projects + details -->
+                <Grid Grid.Row="4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" MinWidth="420" />
+                        <ColumnDefinition Width="10" />
+                        <ColumnDefinition x:Name="DetailsColumn" Width="330" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" Style="{StaticResource CardStyle}" Padding="0" ClipToBounds="True">
+                        <DockPanel>
+                            <Border DockPanel.Dock="Top" Background="{DynamicResource CardBgBrush}"
+                                    BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1" Padding="14,9">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Text="Discovered projects" FontWeight="Bold" FontSize="13"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                                        <Border Background="{DynamicResource BadgeBgBrush}" CornerRadius="10" Padding="7,1" Margin="9,0,0,0">
+                                            <TextBlock x:Name="SummarySelected" Text="0 selected" FontSize="10.5"
+                                                       Foreground="{DynamicResource BadgeTextBrush}" />
+                                        </Border>
+                                        <Border Background="{DynamicResource WarningLightBrush}" CornerRadius="10" Padding="7,1" Margin="6,0,0,0">
+                                            <TextBlock x:Name="SummaryChanges" Text="0 changes" FontSize="10.5"
+                                                       Foreground="{DynamicResource WarningForegroundBrush}" />
+                                        </Border>
+                                        <Border Background="{DynamicResource DangerLightBrush}" CornerRadius="10" Padding="7,1" Margin="6,0,0,0">
+                                            <TextBlock x:Name="SummaryWarnings" Text="0 warnings" FontSize="10.5"
+                                                       Foreground="{DynamicResource DangerForegroundBrush}" />
+                                        </Border>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBox x:Name="SearchBox" Width="170" Padding="8,5" Margin="0,0,6,0"
+                                                 TextChanged="SearchBox_TextChanged" ToolTip="Filter by project name or path" />
+                                        <ComboBox x:Name="FilterCombo" Width="112" SelectedIndex="0"
+                                                  SelectionChanged="FilterCombo_SelectionChanged" ToolTip="Filter by type">
+                                            <ComboBoxItem Content="All types" Tag="All" />
+                                            <ComboBoxItem Content="Android" Tag="Android" />
+                                            <ComboBoxItem Content="Flutter" Tag="Flutter" />
+                                        </ComboBox>
+                                        <Button x:Name="DetailsToggleBtn" Content="Details" Margin="6,0,0,0"
+                                                Padding="10,6" Click="DetailsToggle_Click" ToolTip="Show or hide project details" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <Grid>
+                                <DataGrid x:Name="ProjectsGrid" AutoGenerateColumns="False" CanUserAddRows="False"
+                                          HeadersVisibility="Column" SelectionMode="Single" BorderThickness="0"
+                                          SelectionChanged="ProjectsGrid_SelectionChanged"
+                                          MouseDoubleClick="ProjectsGrid_MouseDoubleClick">
+                                    <DataGrid.Columns>
+                                        <DataGridTemplateColumn Header="" Width="42">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <CheckBox IsChecked="{Binding Selected, UpdateSourceTrigger=PropertyChanged}"
+                                                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+
+                                        <DataGridTemplateColumn Header="Project" Width="170" IsReadOnly="True">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <Path Data="M 3 4 C 3 2.9 3.9 2 5 2 L 9 2 L 11 4 L 19 4 C 20.1 4 21 4.9 21 6 L 21 16 C 21 17.1 20.1 18 19 18 L 5 18 C 3.9 18 3 17.1 3 16 Z"
+                                                              Fill="{DynamicResource PrimaryBrush}" Opacity="0.8" Width="13" Height="13"
+                                                              Stretch="Uniform" Margin="0,0,7,0" VerticalAlignment="Center" />
+                                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+
+                                        <DataGridTemplateColumn Header="Type" Width="76" IsReadOnly="True">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Border x:Name="TypePill" CornerRadius="5" Padding="7,2"
+                                                            HorizontalAlignment="Left" Background="{DynamicResource SuccessLightBrush}">
+                                                        <TextBlock x:Name="TypeText" Text="{Binding Type}" FontSize="10"
+                                                                   FontWeight="Bold" Foreground="{DynamicResource SuccessForegroundBrush}" />
+                                                    </Border>
+                                                    <DataTemplate.Triggers>
+                                                        <DataTrigger Binding="{Binding Type}" Value="Flutter">
+                                                            <Setter TargetName="TypePill" Property="Background" Value="{DynamicResource InfoLightBrush}" />
+                                                            <Setter TargetName="TypeText" Property="Foreground" Value="{DynamicResource InfoForegroundBrush}" />
+                                                        </DataTrigger>
+                                                    </DataTemplate.Triggers>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+
+                                        <DataGridTextColumn Header="Gradle" Binding="{Binding CurrentGradle}" Width="68" IsReadOnly="True"
+                                                            FontFamily="{DynamicResource MonoFont}" FontWeight="Medium" />
+                                        <DataGridTextColumn Header="AGP" Binding="{Binding Agp}" Width="68" IsReadOnly="True"
+                                                            FontFamily="{DynamicResource MonoFont}" FontWeight="Medium" />
+                                        <DataGridTextColumn Header="Target" Binding="{Binding Target, UpdateSourceTrigger=LostFocus}"
+                                                            Width="102" FontFamily="{DynamicResource MonoFont}" FontWeight="SemiBold"
+                                                            EditingElementStyle="{StaticResource GridEditTextBox}" />
+                                        <DataGridTextColumn Header="Target AGP" Binding="{Binding TargetAgp, UpdateSourceTrigger=LostFocus}"
+                                                            Width="100" FontFamily="{DynamicResource MonoFont}" FontWeight="SemiBold"
+                                                            EditingElementStyle="{StaticResource GridEditTextBox}" />
+
+                                        <DataGridTemplateColumn Header="Status" Width="136" IsReadOnly="True">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Border x:Name="StatusPill" CornerRadius="5" Padding="7,2" HorizontalAlignment="Left"
+                                                            Background="{DynamicResource SuccessLightBrush}"
+                                                            Visibility="{Binding Status, Converter={StaticResource StringNotEmptyToVisibility}}">
+                                                        <TextBlock x:Name="StatusText" Text="{Binding Status}" FontSize="10.5"
+                                                                   FontWeight="SemiBold" Foreground="{DynamicResource SuccessForegroundBrush}" />
+                                                    </Border>
+                                                    <DataTemplate.Triggers>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Will change">
+                                                            <Setter TargetName="StatusPill" Property="Background" Value="{DynamicResource WarningLightBrush}" />
+                                                            <Setter TargetName="StatusText" Property="Foreground" Value="{DynamicResource WarningForegroundBrush}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Updating...">
+                                                            <Setter TargetName="StatusPill" Property="Background" Value="{DynamicResource PrimaryLightBrush}" />
+                                                            <Setter TargetName="StatusText" Property="Foreground" Value="{DynamicResource PrimaryBrush}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Building...">
+                                                            <Setter TargetName="StatusPill" Property="Background" Value="{DynamicResource PrimaryLightBrush}" />
+                                                            <Setter TargetName="StatusText" Property="Foreground" Value="{DynamicResource PrimaryBrush}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Updated">
+                                                            <Setter TargetName="StatusPill" Property="Background" Value="{DynamicResource SuccessLightBrush}" />
+                                                            <Setter TargetName="StatusText" Property="Foreground" Value="{DynamicResource SuccessForegroundBrush}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Updated, build OK">
+                                                            <Setter TargetName="StatusPill" Property="Background" Value="{DynamicResource SuccessLightBrush}" />
+                                                            <Setter TargetName="StatusText" Property="Foreground" Value="{DynamicResource SuccessForegroundBrush}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Rolled back">
+                                                            <Setter TargetName="StatusPill" Property="Background" Value="{DynamicResource DangerLightBrush}" />
+                                                            <Setter TargetName="StatusText" Property="Foreground" Value="{DynamicResource DangerForegroundBrush}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Failed">
+                                                            <Setter TargetName="StatusPill" Property="Background" Value="{DynamicResource DangerLightBrush}" />
+                                                            <Setter TargetName="StatusText" Property="Foreground" Value="{DynamicResource DangerForegroundBrush}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Bad target">
+                                                            <Setter TargetName="StatusPill" Property="Background" Value="{DynamicResource DangerLightBrush}" />
+                                                            <Setter TargetName="StatusText" Property="Foreground" Value="{DynamicResource DangerForegroundBrush}" />
+                                                        </DataTrigger>
+                                                    </DataTemplate.Triggers>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+
+                                        <DataGridTemplateColumn Header="Warning" Width="190" IsReadOnly="True">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <Path Data="M 1 21 L 23 21 L 12 2 Z M 12 18 A 1 1 0 1 1 12 16 A 1 1 0 0 1 12 18 Z M 11 10 L 13 10 L 13 14 L 11 14 Z"
+                                                              Fill="{DynamicResource WarningBrush}" Width="12" Height="12" Stretch="Uniform"
+                                                              Margin="0,0,6,0" Visibility="{Binding Warning, Converter={StaticResource StringNotEmptyToVisibility}}" />
+                                                        <TextBlock Text="{Binding Warning}" Foreground="{DynamicResource WarningForegroundBrush}"
+                                                                   FontWeight="Medium" FontSize="11" TextTrimming="CharacterEllipsis"
+                                                                   ToolTip="{Binding Warning}" />
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+
+                                        <DataGridTextColumn Header="Path" Binding="{Binding Path}" Width="*" MinWidth="130" IsReadOnly="True"
+                                                            Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <Border x:Name="EmptyState" Background="{DynamicResource CardBgBrush}" Visibility="Collapsed">
+                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Path Data="M 2 4 C 2 2.9 2.9 2 4 2 L 8 2 L 10 4 L 18 4 C 19.1 4 20 4.9 20 6 L 20 16 C 20 17.1 19.1 18 18 18 L 4 18 C 2.9 18 2 17.1 2 16 Z"
+                                              Fill="{DynamicResource TextMutedBrush}" Width="38" Height="38" Stretch="Uniform"
+                                              HorizontalAlignment="Center" Opacity="0.6" />
+                                        <TextBlock Text="No projects scanned yet" FontSize="14" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center" Margin="0,12,0,4" />
+                                        <TextBlock Text="Choose a folder and click Scan projects." FontSize="12"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </DockPanel>
+                    </Border>
+
+                    <GridSplitter Grid.Column="1" Width="10" HorizontalAlignment="Stretch" Background="Transparent"
+                                  ResizeBehavior="PreviousAndNext" ResizeDirection="Columns" />
+
+                    <Border x:Name="DetailsPanel" Grid.Column="2" Style="{StaticResource CardStyle}" Padding="0">
+                        <DockPanel>
+                            <Border DockPanel.Dock="Top" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1" Padding="14,10">
+                                <Grid>
+                                    <TextBlock Text="Project details" FontSize="12.5" FontWeight="Bold"
+                                               Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    <Button Content="&#xE711;" FontFamily="Segoe MDL2 Assets" Style="{StaticResource GhostButtonStyle}"
+                                            Width="24" Height="24" Padding="0" HorizontalAlignment="Right" Click="DetailsToggle_Click"
+                                            ToolTip="Hide details" />
+                                </Grid>
+                            </Border>
+
+                            <Grid>
+                                <TextBlock x:Name="DetailEmpty" Text="Select a project to inspect its versions."
+                                           TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"
+                                           VerticalAlignment="Center" HorizontalAlignment="Center" Margin="28,0" />
+
+                                <ScrollViewer x:Name="DetailContent" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                                    <StackPanel Margin="14,12,14,14">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Border Width="34" Height="34" CornerRadius="9" Background="{DynamicResource PrimaryLightBrush}" Margin="0,0,10,0">
+                                                <Path Data="M 3 4 C 3 2.9 3.9 2 5 2 L 9 2 L 11 4 L 19 4 C 20.1 4 21 4.9 21 6 L 21 16 C 21 17.1 20.1 18 19 18 L 5 18 C 3.9 18 3 17.1 3 16 Z"
+                                                      Fill="{DynamicResource PrimaryBrush}" Width="16" Height="16" Stretch="Uniform"
+                                                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <StackPanel VerticalAlignment="Center">
+                                                <TextBlock x:Name="DetailName" FontSize="14" FontWeight="Bold"
+                                                           Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock x:Name="DetailType" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <Border Background="{DynamicResource WindowBgAltBrush}" CornerRadius="7" Padding="9,7" Margin="0,12,0,12">
+                                            <TextBlock x:Name="DetailPath" FontSize="10.5" TextWrapping="Wrap"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                                       ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
+                                        </Border>
+
+                                        <Border x:Name="DetailWarningBorder" Background="{DynamicResource WarningLightBrush}" CornerRadius="7"
+                                                Padding="9,7" Margin="0,0,0,12" Visibility="Collapsed">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="&#xE7BA;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                                           Foreground="{DynamicResource WarningForegroundBrush}" Margin="0,0,7,0"
+                                                           VerticalAlignment="Top" />
+                                                <TextBlock x:Name="DetailWarning" TextWrapping="Wrap" FontSize="11"
+                                                           Foreground="{DynamicResource WarningForegroundBrush}" />
+                                            </StackPanel>
+                                        </Border>
+
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+
+                                            <TextBlock Text="CURRENT GRADLE" FontSize="9.5" FontWeight="Bold"
+                                                       Foreground="{DynamicResource TextMutedBrush}" />
+                                            <TextBlock x:Name="DetailGradle" Grid.Row="1" FontFamily="{DynamicResource MonoFont}"
+                                                       FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                            <TextBlock Grid.Row="2" Text="Current AGP" FontSize="10"
+                                                       Foreground="{DynamicResource TextMutedBrush}" Margin="0,8,0,0" />
+                                            <TextBlock x:Name="DetailAgp" Grid.Row="2" FontFamily="{DynamicResource MonoFont}"
+                                                       FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"
+                                                       HorizontalAlignment="Right" />
+
+                                            <TextBlock Grid.Column="1" Text="TARGET GRADLE" FontSize="9.5" FontWeight="Bold"
+                                                       Foreground="{DynamicResource TextMutedBrush}" />
+                                            <TextBlock x:Name="DetailTargetGradle" Grid.Row="1" Grid.Column="1"
+                                                       FontFamily="{DynamicResource MonoFont}" FontSize="13" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource PrimaryBrush}" />
+                                            <TextBlock Grid.Row="2" Grid.Column="1" Text="Target AGP" FontSize="10"
+                                                       Foreground="{DynamicResource TextMutedBrush}" Margin="0,8,0,0" />
+                                            <TextBlock x:Name="DetailTargetAgp" Grid.Row="2" Grid.Column="1"
+                                                       FontFamily="{DynamicResource MonoFont}" FontSize="12" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource PrimaryBrush}" HorizontalAlignment="Right" />
+                                        </Grid>
+
+                                        <Border Background="{DynamicResource WindowBgAltBrush}" CornerRadius="7" Padding="9,7" Margin="0,12,0,0">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Ellipse x:Name="DetailStatusDot" Width="7" Height="7"
+                                                         Fill="{DynamicResource SuccessBrush}" Margin="0,0,7,0" VerticalAlignment="Center" />
+                                                <TextBlock x:Name="DetailStatus" FontSize="11"
+                                                           Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Border>
+
+                                        <WrapPanel Margin="0,14,0,0">
+                                            <Button x:Name="OpenFolderBtn" Content="Open folder" Margin="0,0,6,6"
+                                                    Padding="10,6" Click="OpenFolder_Click" />
+                                            <Button x:Name="CopyPathBtn" Content="Copy path" Margin="0,0,6,6"
+                                                    Padding="10,6" Click="CopyPath_Click" />
+                                            <Button x:Name="SelectOnlyBtn" Content="Select only" Padding="10,6"
+                                                    Click="SelectOnly_Click" />
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </Grid>
+                        </DockPanel>
+                    </Border>
+                </Grid>
+
+                <!-- Terminal -->
+                <Border Grid.Row="5" Background="{DynamicResource TerminalBgBrush}" BorderBrush="{DynamicResource TerminalBorderBrush}"
+                        BorderThickness="1" CornerRadius="10" Margin="0,10,0,0" ClipToBounds="True">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.Row="0" Background="{DynamicResource TerminalHeaderBrush}" BorderBrush="{DynamicResource TerminalBorderBrush}"
+                                BorderThickness="0,0,0,1" Padding="12,5">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Path Data="M 4 6 L 10 12 L 4 18 M 12 18 L 20 18" Stroke="{DynamicResource TerminalAccentBrush}"
+                                          StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                          Width="14" Height="14" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                    <TextBlock Text="Execution &amp; diagnostic log" FontSize="11" FontWeight="Bold"
+                                               Foreground="#F1F5F9" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="LogEmpty" Text="  —  Ready" FontSize="10.5"
+                                               Foreground="#64748B" VerticalAlignment="Center" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                    <Button Content="Copy" Click="CopyLog_Click" Background="Transparent" Foreground="#CBD5E1"
+                                            BorderThickness="0" Padding="8,2" FontSize="11" FontWeight="Medium" Cursor="Hand" />
+                                    <Button Content="Save" Click="SaveLog_Click" Background="Transparent" Foreground="#CBD5E1"
+                                            BorderThickness="0" Padding="8,2" FontSize="11" FontWeight="Medium" Cursor="Hand" />
+                                    <Button Content="Clear" Click="ClearLog_Click" Background="Transparent" Foreground="#CBD5E1"
+                                            BorderThickness="0" Padding="8,2" FontSize="11" FontWeight="Medium" Cursor="Hand" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <TextBox x:Name="LogBox" Grid.Row="1" Style="{StaticResource TerminalTextBoxStyle}"
+                                 VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" />
+                    </Grid>
+                </Border>
+
+                <!-- Footer -->
+                <Grid Grid.Row="6" Margin="2,7,2,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Ellipse x:Name="StatusDot" Width="8" Height="8" Fill="{DynamicResource SuccessBrush}"
+                                 Margin="0,0,8,0" VerticalAlignment="Center" />
+                        <TextBlock x:Name="StatusText" Foreground="{DynamicResource TextPrimaryBrush}"
+                                   FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center"
+                                   Text="Choose your projects folder, then click Scan." />
+                    </StackPanel>
+
+                    <TextBlock x:Name="HomeLabel" Grid.Column="1" Foreground="{DynamicResource TextSecondaryBrush}"
+                               FontSize="10.5" FontWeight="Medium" VerticalAlignment="Center" HorizontalAlignment="Right" />
+                </Grid>
+            </Grid>
+
+            <!-- Loading overlay -->
+            <Border x:Name="BusyOverlay" Grid.RowSpan="2" Background="{DynamicResource OverlayBrush}"
+                    Visibility="Collapsed" Panel.ZIndex="50" IsHitTestVisible="True">
+                <Border Background="{DynamicResource CardBgBrush}" BorderBrush="{DynamicResource CardBorderBrush}"
+                        BorderThickness="1" CornerRadius="12" Padding="22,18" Width="360"
+                        HorizontalAlignment="Center" VerticalAlignment="Center" Effect="{StaticResource CardShadow}">
+                    <StackPanel>
+                        <TextBlock x:Name="BusyText" Text="Working..." FontSize="13" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center" />
+                        <ProgressBar x:Name="BusyProgress" Style="{StaticResource ModernProgressBarStyle}"
+                                     IsIndeterminate="True" Margin="0,12,0,12" />
+                        <Button x:Name="CancelBtn" Content="Cancel" HorizontalAlignment="Center" Padding="16,6"
+                                Click="Cancel_Click" />
                     </StackPanel>
                 </Border>
-                <Border CornerRadius="14" Background="{StaticResource PrimaryLightBrush}" BorderBrush="#BFDBFE" BorderThickness="1" Padding="12,5">
-                    <TextBlock x:Name="ProjectCountBadge" Text="0 projects" FontSize="11" FontWeight="Bold" Foreground="{StaticResource PrimaryBrush}" />
-                </Border>
-            </StackPanel>
+            </Border>
+
+            <local:ToastHost x:Name="ToastHostControl" Grid.RowSpan="2" Panel.ZIndex="100"
+                             HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,26,54" />
         </Grid>
-
-        <!-- ROW 1: PROJECTS FOLDER CARD -->
-        <Border Grid.Row="1" Background="{StaticResource CardBgBrush}" BorderBrush="{StaticResource CardBorderBrush}"
-                BorderThickness="1" CornerRadius="8" Padding="12,9" Margin="0,0,0,10">
-            <Border.Effect>
-                <DropShadowEffect Color="#0F172A" Opacity="0.03" BlurRadius="6" ShadowDepth="1" Direction="270" />
-            </Border.Effect>
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-
-                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
-                    <!-- Folder SVG Icon -->
-                    <Path Data="M 2 4 C 2 2.9 2.9 2 4 2 L 8 2 L 10 4 L 18 4 C 19.1 4 20 4.9 20 6 L 20 16 C 20 17.1 19.1 18 18 18 L 4 18 C 2.9 18 2 17.1 2 16 L 2 4 Z"
-                          Fill="{StaticResource PrimaryBrush}" Width="15" Height="15" Stretch="Uniform" Margin="0,0,7,0" VerticalAlignment="Center" />
-                    <TextBlock Text="Projects folder:" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center" />
-                </StackPanel>
-
-                <TextBox x:Name="PathBox" Grid.Column="1" IsReadOnly="True" VerticalContentAlignment="Center" Padding="10,6"
-                         ToolTip="Folder containing your Android or Flutter projects" />
-
-                <Button Grid.Column="2" Content="Browse..." Margin="8,0,0,0" Padding="16,6" Click="Browse_Click" />
-
-                <Button x:Name="ScanBtn" Grid.Column="3" Content="Scan Projects" Margin="8,0,0,0" Padding="18,6"
-                        Style="{StaticResource PrimaryButtonStyle}" Click="Scan_Click" />
-            </Grid>
-        </Border>
-
-        <!-- ROW 2: SETTINGS CARD (EXPANDER) -->
-        <Expander Grid.Row="2" Margin="0,0,0,10">
-            <Expander.Header>
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <!-- Sliders / Config Icon -->
-                    <Path Data="M 3 6 L 15 6 M 3 12 L 21 12 M 3 18 L 9 18 M 15 4 L 15 8 M 9 10 L 9 14 M 18 16 L 18 20"
-                          Stroke="{StaticResource PrimaryBrush}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                          Width="16" Height="16" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Center" />
-                    <TextBlock Text="Settings &amp; Environment" FontWeight="Bold" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center" />
-                    <TextBlock Text="— Gradle user home, ignore list, build verification" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="8,0,0,0" VerticalAlignment="Center" />
-                </StackPanel>
-            </Expander.Header>
-
-            <Grid Margin="4,8,4,4">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-
-                <!-- Gradle Home -->
-                <TextBlock Grid.Row="0" Grid.Column="0" Text="Gradle home:" FontWeight="Medium" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,10,8" />
-                <TextBox x:Name="GradleHomeBox" Grid.Row="0" Grid.Column="1" Margin="0,0,0,8" Padding="8,5"
-                         ToolTip="Empty = auto-detect (GRADLE_USER_HOME or %USERPROFILE%\.gradle)" />
-                <Button Grid.Row="0" Grid.Column="2" Content="Browse..." Margin="8,0,0,8" Padding="12,5" Click="BrowseHome_Click" />
-                <Button Grid.Row="0" Grid.Column="3" Content="Auto" Margin="8,0,0,8" Padding="12,5" Click="ResetHome_Click" />
-
-                <!-- Skip folders -->
-                <TextBlock Grid.Row="1" Grid.Column="0" Text="Skip folders:" FontWeight="Medium" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,10,8" />
-                <TextBox x:Name="SkipBox" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,0,0,8" Padding="8,5"
-                         ToolTip="Comma-separated folder names ignored during project scanning" />
-
-                <!-- Always keep -->
-                <TextBlock Grid.Row="2" Grid.Column="0" Text="Always keep:" FontWeight="Medium" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,10,8" />
-                <TextBox x:Name="KeepBox" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,0,0,8" Padding="8,5"
-                         ToolTip="Comma-separated Gradle versions that cleanup must never delete, e.g. 8.14, 9.1.0" />
-
-                <!-- Update AGP Row -->
-                <StackPanel Grid.Row="3" Grid.ColumnSpan="4" Orientation="Horizontal" Margin="0,2,0,8">
-                    <CheckBox x:Name="UpdateAgpCheck" Content="Automatically update AGP (Android Gradle Plugin) to compatible version"
-                              IsChecked="True" VerticalAlignment="Center" FontWeight="SemiBold"
-                              ToolTip="Updates AGP version in settings.gradle, build.gradle, or libs.versions.toml" />
-                </StackPanel>
-
-                <!-- Verification & Rules Row -->
-                <StackPanel Grid.Row="4" Grid.ColumnSpan="4" Orientation="Horizontal" Margin="0,4,0,2">
-                    <CheckBox x:Name="VerifyCheck" Content="Build after update, roll back on failure" VerticalAlignment="Center" />
-                    <TextBlock Text="Task:" FontWeight="Medium" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="16,0,6,0" />
-                    <TextBox x:Name="TaskBox" Width="130" Padding="8,4" />
-                    <TextBlock Text="Timeout (min):" FontWeight="Medium" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="14,0,6,0" />
-                    <TextBox x:Name="TimeoutBox" Width="55" Padding="8,4" HorizontalContentAlignment="Center" />
-                    <Button Content="Edit compatibility rules" Margin="16,0,0,0" Padding="14,5" Click="EditCompat_Click" />
-                </StackPanel>
-            </Grid>
-        </Expander>
-
-        <!-- ROW 3: COMMAND ACTIONS TOOLBAR CARD -->
-        <Border Grid.Row="3" Background="{StaticResource CardBgBrush}" BorderBrush="{StaticResource CardBorderBrush}"
-                BorderThickness="1" CornerRadius="8" Padding="12,8" Margin="0,0,0,10">
-            <Border.Effect>
-                <DropShadowEffect Color="#0F172A" Opacity="0.03" BlurRadius="6" ShadowDepth="1" Direction="270" />
-            </Border.Effect>
-            <WrapPanel VerticalAlignment="Center">
-                <!-- Target Version -->
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
-                    <TextBlock Text="Target Gradle:" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
-                    <ComboBox x:Name="TargetBox" Width="115" IsEditable="True" />
-                </StackPanel>
-
-                <!-- Selection Group -->
-                <Button x:Name="SelAllBtn" Content="Select all" Margin="0,0,6,0" Padding="12,6" Click="SelectAll_Click" />
-                <Button x:Name="SelNoneBtn" Content="Select none" Margin="0,0,6,0" Padding="12,6" Click="SelectNone_Click" />
-                <Button x:Name="SetTargetBtn" Content="Set target on selected" Margin="0,0,12,0" Padding="12,6" Click="SetTarget_Click" />
-
-                <!-- Separator -->
-                <Rectangle Width="1" Height="24" Fill="{StaticResource CardBorderBrush}" Margin="0,0,12,0" VerticalAlignment="Center" />
-
-                <!-- Execution Group -->
-                <Button x:Name="DryBtn" Content="Dry Run" Margin="0,0,6,0" Padding="16,6" Click="DryRun_Click" />
-                <Button x:Name="ApplyBtn" Content="Apply to selected" Margin="0,0,12,0" Padding="16,6"
-                        Style="{StaticResource SuccessButtonStyle}" Click="Apply_Click" />
-
-                <!-- Separator -->
-                <Rectangle Width="1" Height="24" Fill="{StaticResource CardBorderBrush}" Margin="0,0,12,0" VerticalAlignment="Center" />
-
-                <!-- Maintenance Group -->
-                <Button x:Name="CleanBtn" Content="Clean old versions..." Margin="0,0,6,0" Padding="14,6" Click="Clean_Click" />
-                <Button x:Name="StopBtn" Content="Stop daemons" Padding="14,6" Style="{StaticResource DangerButtonStyle}" Click="Stop_Click" />
-            </WrapPanel>
-        </Border>
-
-        <!-- ROW 4: PROJECTS DATAGRID CARD -->
-        <Border Grid.Row="4" Background="{StaticResource CardBgBrush}" BorderBrush="{StaticResource CardBorderBrush}"
-                BorderThickness="1" CornerRadius="8" ClipToBounds="True">
-            <Border.Effect>
-                <DropShadowEffect Color="#0F172A" Opacity="0.03" BlurRadius="6" ShadowDepth="1" Direction="270" />
-            </Border.Effect>
-            <DockPanel>
-                <!-- Table Header Bar -->
-                <Border DockPanel.Dock="Top" Background="#F8FAFC" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="0,0,0,1" Padding="14,8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="Discovered Projects" FontWeight="Bold" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" />
-                            <TextBlock Text=" — Select items to update or inspect compatibility" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="6,0,0,0" />
-                        </StackPanel>
-                        <TextBlock Grid.Column="1" Text="Double-click Target column to customize individual version"
-                                   FontSize="11" FontWeight="Medium" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
-                    </Grid>
-                </Border>
-
-                <!-- DataGrid -->
-                <DataGrid x:Name="ProjectsGrid" AutoGenerateColumns="False" CanUserAddRows="False"
-                          HeadersVisibility="Column" SelectionMode="Single" BorderThickness="0">
-                    <DataGrid.Columns>
-                        <!-- Use Checkbox -->
-                        <DataGridTemplateColumn Header="Use" Width="48">
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <CheckBox IsChecked="{Binding Selected, UpdateSourceTrigger=PropertyChanged}"
-                                              HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
-
-                        <!-- Project Name -->
-                        <DataGridTemplateColumn Header="Project" Width="180" IsReadOnly="True">
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Path Data="M 3 4 C 3 2.9 3.9 2 5 2 L 9 2 L 11 4 L 19 4 C 20.1 4 21 4.9 21 6 L 21 16 C 21 17.1 20.1 18 19 18 L 5 18 C 3.9 18 3 17.1 3 16 Z"
-                                              Fill="{StaticResource PrimaryBrush}" Opacity="0.75" Width="13" Height="13" Stretch="Uniform" Margin="0,0,7,0" VerticalAlignment="Center" />
-                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"
-                                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                    </StackPanel>
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
-
-                        <!-- Type Badge -->
-                        <DataGridTemplateColumn Header="Type" Width="85" IsReadOnly="True">
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <Border x:Name="typePill" CornerRadius="4" Padding="7,2" HorizontalAlignment="Center">
-                                        <TextBlock x:Name="typeText" Text="{Binding Type}" FontSize="11" FontWeight="Bold" />
-                                    </Border>
-                                    <DataTemplate.Triggers>
-                                        <DataTrigger Binding="{Binding Type}" Value="Android">
-                                            <Setter TargetName="typePill" Property="Background" Value="#DCFCE7" />
-                                            <Setter TargetName="typeText" Property="Foreground" Value="#15803D" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding Type}" Value="Flutter">
-                                            <Setter TargetName="typePill" Property="Background" Value="#E0F2FE" />
-                                            <Setter TargetName="typeText" Property="Foreground" Value="#0369A1" />
-                                        </DataTrigger>
-                                    </DataTemplate.Triggers>
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
-
-                        <!-- Current Gradle -->
-                        <DataGridTextColumn Header="Gradle" Binding="{Binding CurrentGradle}" Width="75" IsReadOnly="True"
-                                            FontFamily="{StaticResource MonoFont}" FontWeight="Medium" />
-
-                        <!-- AGP -->
-                        <DataGridTextColumn Header="AGP" Binding="{Binding Agp}" Width="75" IsReadOnly="True"
-                                            FontFamily="{StaticResource MonoFont}" FontWeight="Medium" />
-
-                        <!-- Target Gradle (editable) -->
-                        <DataGridTextColumn Header="Target Gradle" Binding="{Binding Target, UpdateSourceTrigger=LostFocus}"
-                                            Width="110" FontFamily="{StaticResource MonoFont}" FontWeight="SemiBold" />
-
-                        <!-- Target AGP (editable) -->
-                        <DataGridTextColumn Header="Target AGP" Binding="{Binding TargetAgp, UpdateSourceTrigger=LostFocus}"
-                                            Width="105" FontFamily="{StaticResource MonoFont}" FontWeight="SemiBold" />
-
-                        <!-- Status Badge -->
-                        <DataGridTemplateColumn Header="Status" Width="135" IsReadOnly="True">
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <Border x:Name="statusPill" CornerRadius="4" Padding="8,2" HorizontalAlignment="Left"
-                                            Visibility="{Binding Status, Converter={StaticResource StringNotEmptyToVisibility}}">
-                                        <TextBlock x:Name="statusText" Text="{Binding Status}" FontSize="11" FontWeight="SemiBold" />
-                                    </Border>
-                                    <DataTemplate.Triggers>
-                                        <DataTrigger Binding="{Binding Status}" Value="Up to date">
-                                            <Setter TargetName="statusPill" Property="Background" Value="#DCFCE7" />
-                                            <Setter TargetName="statusText" Property="Foreground" Value="#15803D" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding Status}" Value="Will change">
-                                            <Setter TargetName="statusPill" Property="Background" Value="#FEF3C7" />
-                                            <Setter TargetName="statusText" Property="Foreground" Value="#B45309" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding Status}" Value="Updated">
-                                            <Setter TargetName="statusPill" Property="Background" Value="#DCFCE7" />
-                                            <Setter TargetName="statusText" Property="Foreground" Value="#15803D" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding Status}" Value="Updated, build OK">
-                                            <Setter TargetName="statusPill" Property="Background" Value="#DCFCE7" />
-                                            <Setter TargetName="statusText" Property="Foreground" Value="#15803D" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding Status}" Value="Updated (not built)">
-                                            <Setter TargetName="statusPill" Property="Background" Value="#EFF6FF" />
-                                            <Setter TargetName="statusText" Property="Foreground" Value="#1E40AF" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding Status}" Value="Updating...">
-                                            <Setter TargetName="statusPill" Property="Background" Value="#E0E7FF" />
-                                            <Setter TargetName="statusText" Property="Foreground" Value="#4338CA" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding Status}" Value="Building...">
-                                            <Setter TargetName="statusPill" Property="Background" Value="#E0E7FF" />
-                                            <Setter TargetName="statusText" Property="Foreground" Value="#4338CA" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding Status}" Value="Rolled back">
-                                            <Setter TargetName="statusPill" Property="Background" Value="#FEE2E2" />
-                                            <Setter TargetName="statusText" Property="Foreground" Value="#B91C1C" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding Status}" Value="Failed">
-                                            <Setter TargetName="statusPill" Property="Background" Value="#FEE2E2" />
-                                            <Setter TargetName="statusText" Property="Foreground" Value="#B91C1C" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding Status}" Value="Bad target">
-                                            <Setter TargetName="statusPill" Property="Background" Value="#FEE2E2" />
-                                            <Setter TargetName="statusText" Property="Foreground" Value="#B91C1C" />
-                                        </DataTrigger>
-                                    </DataTemplate.Triggers>
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
-
-                        <!-- Warning Column -->
-                        <DataGridTemplateColumn Header="Warning" Width="230" IsReadOnly="True">
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Path Data="M 1 21 L 23 21 L 12 2 Z M 12 18 A 1 1 0 1 1 12 16 A 1 1 0 0 1 12 18 Z M 11 10 L 13 10 L 13 14 L 11 14 Z"
-                                              Fill="{StaticResource WarningBrush}" Width="12" Height="12" Stretch="Uniform" Margin="0,0,6,0"
-                                              Visibility="{Binding Warning, Converter={StaticResource StringNotEmptyToVisibility}}" />
-                                        <TextBlock Text="{Binding Warning}" Foreground="{StaticResource WarningBrush}" FontWeight="Medium"
-                                                   FontSize="12" TextTrimming="CharacterEllipsis" ToolTip="{Binding Warning}" />
-                                    </StackPanel>
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
-
-                        <!-- Project Path -->
-                        <DataGridTextColumn Header="Path" Binding="{Binding Path}" Width="*" IsReadOnly="True"
-                                            Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" />
-                    </DataGrid.Columns>
-                </DataGrid>
-            </DockPanel>
-        </Border>
-
-        <!-- ROW 5: TERMINAL OUTPUT CONSOLE CARD -->
-        <Border Grid.Row="5" Background="{StaticResource TerminalBgBrush}" BorderBrush="{StaticResource TerminalBorderBrush}"
-                BorderThickness="1" CornerRadius="8" Margin="0,10,0,0" ClipToBounds="True">
-            <Border.Effect>
-                <DropShadowEffect Color="#0F172A" Opacity="0.05" BlurRadius="6" ShadowDepth="1" Direction="270" />
-            </Border.Effect>
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-
-                <!-- Terminal Top Bar -->
-                <Border Grid.Row="0" Background="{StaticResource TerminalHeaderBrush}" BorderBrush="{StaticResource TerminalBorderBrush}"
-                        BorderThickness="0,0,0,1" Padding="12,5">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <!-- Terminal prompt icon >_ -->
-                            <Path Data="M 4 6 L 10 12 L 4 18 M 12 18 L 20 18" Stroke="{StaticResource TerminalAccentBrush}"
-                                  StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                  Width="14" Height="14" Stretch="Uniform" Margin="0,0,7,0" VerticalAlignment="Center" />
-                            <TextBlock Text="Execution &amp; Diagnostic Log" FontSize="11" FontWeight="Bold"
-                                       Foreground="#F1F5F9" VerticalAlignment="Center" />
-                        </StackPanel>
-
-                        <!-- Clear Log Button -->
-                        <Button Grid.Column="1" Content="Clear log" Click="ClearLog_Click"
-                                Background="Transparent" Foreground="#CBD5E1" BorderThickness="0"
-                                Padding="8,2" FontSize="11" FontWeight="Medium" Cursor="Hand" />
-                    </Grid>
-                </Border>
-
-                <!-- Terminal TextBox -->
-                <TextBox x:Name="LogBox" Grid.Row="1" IsReadOnly="True"
-                         Style="{StaticResource TerminalTextBoxStyle}"
-                         VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
-                         TextWrapping="NoWrap" />
-            </Grid>
-        </Border>
-
-        <!-- ROW 6: PROGRESS & STATUS FOOTER -->
-        <StackPanel Grid.Row="6" Margin="0,6,0,0">
-            <!-- Smooth Indeterminate Progress Bar -->
-            <ProgressBar x:Name="WorkProgress" Style="{StaticResource ModernProgressBarStyle}"
-                         IsIndeterminate="True" Visibility="Collapsed" Margin="0,0,0,6" />
-
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-
-                <!-- Left: Status Dot & Message -->
-                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Ellipse x:Name="StatusDot" Width="8" Height="8" Fill="{StaticResource SuccessBrush}" Margin="0,0,8,0" VerticalAlignment="Center">
-                        <Ellipse.RenderTransform>
-                            <ScaleTransform ScaleX="1" ScaleY="1" />
-                        </Ellipse.RenderTransform>
-                    </Ellipse>
-                    <TextBlock x:Name="StatusText" Foreground="{StaticResource TextPrimaryBrush}"
-                               FontSize="12" FontWeight="SemiBold"
-                               Text="Choose your projects folder, then click Scan." VerticalAlignment="Center" />
-                </StackPanel>
-
-                <!-- Right: Active Home Path Note -->
-                <TextBlock x:Name="HomeLabel" Grid.Column="1" Foreground="{StaticResource TextSecondaryBrush}"
-                           FontSize="11" FontWeight="Medium" VerticalAlignment="Center" HorizontalAlignment="Right" />
-            </Grid>
-        </StackPanel>
-    </Grid>
+    </Border>
 </Window>
