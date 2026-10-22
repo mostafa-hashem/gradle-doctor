@@ -26,11 +26,15 @@
     <SolidColorBrush x:Key="InfoBrush" Color="#0EA5E9" />
     <SolidColorBrush x:Key="InfoLightBrush" Color="#E0F2FE" />
     <SolidColorBrush x:Key="InfoForegroundBrush" Color="#0369A1" />
-    <SolidColorBrush x:Key="TerminalBgBrush" Color="#0B1220" />
-    <SolidColorBrush x:Key="TerminalHeaderBrush" Color="#111C30" />
-    <SolidColorBrush x:Key="TerminalBorderBrush" Color="#1E293B" />
-    <SolidColorBrush x:Key="TerminalTextBrush" Color="#CBD5E1" />
-    <SolidColorBrush x:Key="TerminalAccentBrush" Color="#38BDF8" />
+    <SolidColorBrush x:Key="TerminalBgBrush" Color="#F8FAFC" />
+    <SolidColorBrush x:Key="TerminalHeaderBrush" Color="#EEF2F7" />
+    <SolidColorBrush x:Key="TerminalBorderBrush" Color="#D9E2EC" />
+    <SolidColorBrush x:Key="TerminalTextBrush" Color="#0F172A" />
+    <SolidColorBrush x:Key="TerminalAccentBrush" Color="#2563EB" />
+    <SolidColorBrush x:Key="TerminalHeaderTextBrush" Color="#0F172A" />
+    <SolidColorBrush x:Key="TerminalMutedBrush" Color="#64748B" />
+    <SolidColorBrush x:Key="TerminalActionBrush" Color="#475569" />
+    <SolidColorBrush x:Key="TerminalSplitterBrush" Color="#CBD5E1" />
     <SolidColorBrush x:Key="InputBgBrush" Color="#FFFFFF" />
     <SolidColorBrush x:Key="InputBorderBrush" Color="#CBD5E1" />
     <SolidColorBrush x:Key="InputHoverBorderBrush" Color="#94A3B8" />

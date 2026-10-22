@@ -8,12 +8,18 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>GradleDoctor</RootNamespace>
     <AssemblyName>GradleDoctor</AssemblyName>
+    <ApplicationIcon>Assets\GradleDoctor.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <None Update="compat.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <Resource Include="Assets\GradleDoctor.ico" />
+    <Compile Remove="GradleDoctor.Tests\**" />
+    <Page Remove="GradleDoctor.Tests\**" />
+    <ApplicationDefinition Remove="GradleDoctor.Tests\**" />
+    <None Remove="GradleDoctor.Tests\**" />
     <Using Include="System.IO" />
   </ItemGroup>
 

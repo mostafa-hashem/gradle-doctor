@@ -7,6 +7,28 @@
     <local:InverseBoolConverter x:Key="InverseBool" />
     <local:NullToVisibilityConverter x:Key="NullToVisibility" />
 
+    <DataTemplate x:Key="VersionOptionTemplate">
+        <Grid MinWidth="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="{Binding Version}" VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis" />
+            <Border Grid.Column="1" CornerRadius="4" Padding="4,1" Margin="7,0,0,0"
+                    Background="{DynamicResource WarningLightBrush}"
+                    Visibility="{Binding WillDownload, Converter={StaticResource BoolToVisibility}}"
+                    ToolTip="Not downloaded yet; Gradle will download it before use">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE896;" FontFamily="Segoe MDL2 Assets" FontSize="9"
+                               Foreground="{DynamicResource WarningForegroundBrush}" VerticalAlignment="Center" />
+                    <TextBlock Text="download" FontSize="9" FontWeight="SemiBold" Margin="3,0,0,0"
+                               Foreground="{DynamicResource WarningForegroundBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+            </Border>
+        </Grid>
+    </DataTemplate>
+
     <FontFamily x:Key="MonoFont">Cascadia Mono, Consolas, Courier New</FontFamily>
     <FontFamily x:Key="UiFont">Segoe UI Variable Text, Segoe UI</FontFamily>
 
@@ -221,6 +243,8 @@
     <Style x:Key="TerminalTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Foreground" Value="{DynamicResource TerminalTextBrush}" />
+        <Setter Property="SelectionBrush" Value="{DynamicResource SelectionBrush}" />
+        <Setter Property="CaretBrush" Value="{DynamicResource TerminalTextBrush}" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Padding" Value="12,9" />
         <Setter Property="FontFamily" Value="{DynamicResource MonoFont}" />

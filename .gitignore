@@ -1,0 +1,29 @@
+# Build output
+bin/
+obj/
+**/bin/
+**/obj/
+
+# Test results
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+
+# IDE
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak

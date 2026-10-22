@@ -29,6 +29,9 @@ public partial class MainWindow : Window
     bool _busy;
     bool _loadingUi;
     bool _detailsVisible = true;
+    bool _terminalCollapsed;
+    double _terminalHeight = 170;
+    const double TerminalCollapsedHeight = 42;
 
     public MainWindow()
     {
@@ -172,7 +175,7 @@ public partial class MainWindow : Window
         _s.UpdateAgp = UpdateAgpCheck.IsChecked == true;
         _s.VerifyTask = VerifyTask;
         _s.TimeoutMinutes = Timeout;
-        _s.DefaultGradleVersion = (DefaultTargetBox.SelectedItem as string ?? TargetBox.Text).Trim();
+        _s.DefaultGradleVersion = (SelectedVersion(DefaultTargetBox) ?? TargetBox.Text).Trim();
         _s.ThemeMode = ThemeService.Current.ToString();
         _s.Save();
         UpdateHomeLabels();
@@ -263,6 +266,29 @@ public partial class MainWindow : Window
         LogEmpty.Visibility = Visibility.Visible;
     }
 
+    void TerminalToggle_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_terminalCollapsed)
+        {
+            _terminalHeight = TerminalRow.ActualHeight > TerminalCollapsedHeight ? TerminalRow.ActualHeight : 170;
+            _terminalCollapsed = true;
+            TerminalRow.Height = new GridLength(TerminalCollapsedHeight);
+            TerminalSplitter.IsEnabled = false;
+            LogBox.Visibility = Visibility.Collapsed;
+            TerminalToggleBtn.Content = "\uE70D";
+            TerminalToggleBtn.ToolTip = "Expand log";
+        }
+        else
+        {
+            _terminalCollapsed = false;
+            TerminalRow.Height = new GridLength(Math.Max(_terminalHeight, 80));
+            TerminalSplitter.IsEnabled = true;
+            LogBox.Visibility = Visibility.Visible;
+            TerminalToggleBtn.Content = "\uE70E";
+            TerminalToggleBtn.ToolTip = "Collapse log";
+        }
+    }
+
     void CopyLog_Click(object sender, RoutedEventArgs e)
     {
         try
@@ -308,8 +334,8 @@ public partial class MainWindow : Window
             var latest = _remoteVersions.FirstOrDefault()?.Version;
             if (!string.IsNullOrWhiteSpace(latest))
             {
-                if (string.IsNullOrWhiteSpace(DefaultTargetBox.SelectedItem as string) || force)
-                    DefaultTargetBox.SelectedItem = latest;
+                if (string.IsNullOrWhiteSpace(SelectedVersion(DefaultTargetBox)) || force)
+                    SelectVersion(DefaultTargetBox, latest);
                 if (string.IsNullOrWhiteSpace(TargetBox.Text))
                     TargetBox.Text = latest;
             }
@@ -331,14 +357,16 @@ public partial class MainWindow : Window
     void PopulateVersionLists()
     {
         var target = TargetBox.Text;
-        var defaultTarget = (DefaultTargetBox.SelectedItem as string ?? DefaultTargetBox.Text)?.Trim();
+        var defaultTarget = SelectedVersion(DefaultTargetBox)?.Trim();
+        var installed = GradleCleaner.InstalledVersions(Home).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var versions = _remoteVersions.Select(v => v.Version)
-            .Concat(GradleCleaner.InstalledVersions(Home))
+            .Concat(installed)
             .Concat(_projects.Select(p => p.CurrentGradle).Where(v => v != "?"))
             .Where(v => VersionFormat.IsMatch(v))
-            .Distinct()
+            .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderByDescending(v => v, Comparer<string>.Create(ProjectScanner.CompareVersions))
+            .Select(v => new VersionOption(v, installed.Contains(v)))
             .ToList();
 
         _loadingUi = true;
@@ -346,13 +374,29 @@ public partial class MainWindow : Window
         VersionPicker.SelectedIndex = -1;
         DefaultTargetBox.ItemsSource = versions;
 
-        if (!string.IsNullOrWhiteSpace(defaultTarget) && versions.Contains(defaultTarget))
-            DefaultTargetBox.SelectedItem = defaultTarget;
-        else if (versions.Count > 0)
+        if (!string.IsNullOrWhiteSpace(defaultTarget))
+            SelectVersion(DefaultTargetBox, defaultTarget);
+        if (DefaultTargetBox.SelectedItem == null && versions.Count > 0)
             DefaultTargetBox.SelectedIndex = 0;
-        _loadingUi = false;
 
         TargetBox.Text = target;
+        if (!string.IsNullOrWhiteSpace(target))
+            SelectVersion(VersionPicker, target);
+        _loadingUi = false;
+    }
+
+    static string? SelectedVersion(ComboBox box) => box.SelectedItem switch
+    {
+        VersionOption option => option.Version,
+        string text => text,
+        _ => string.IsNullOrWhiteSpace(box.Text) ? null : box.Text.Trim()
+    };
+
+    static void SelectVersion(ComboBox box, string version)
+    {
+        var match = box.Items.OfType<VersionOption>()
+            .FirstOrDefault(v => string.Equals(v.Version, version, StringComparison.OrdinalIgnoreCase));
+        if (match != null) box.SelectedItem = match;
     }
 
     async void RefreshVersions_Click(object sender, RoutedEventArgs e)
@@ -365,9 +409,11 @@ public partial class MainWindow : Window
     void VersionPicker_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_loadingUi) return;
-        if (VersionPicker.SelectedItem is string version)
+        if (VersionPicker.SelectedItem is VersionOption option)
         {
-            TargetBox.Text = version;
+            TargetBox.Text = option.Version;
+            if (option.WillDownload)
+                SetStatus($"Gradle {option.Version} is not downloaded yet.", "WarningBrush");
         }
     }
 
@@ -521,7 +567,7 @@ public partial class MainWindow : Window
 
     void UseDefault_Click(object sender, RoutedEventArgs e)
     {
-        var target = (DefaultTargetBox.SelectedItem as string ?? TargetBox.Text).Trim();
+        var target = (SelectedVersion(DefaultTargetBox) ?? TargetBox.Text).Trim();
         if (!VersionFormat.IsMatch(target))
         {
             DialogService.Warning("Choose a valid default Gradle version first.");

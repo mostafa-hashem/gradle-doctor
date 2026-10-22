@@ -4,6 +4,7 @@
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:local="clr-namespace:GradleDoctor"
         Title="Gradle Doctor"
+        Icon="Assets/GradleDoctor.ico"
         Height="880" Width="1320"
         MinHeight="720" MinWidth="1120"
         WindowStyle="None"
@@ -82,7 +83,8 @@
                     <RowDefinition Height="Auto" /> <!-- Settings -->
                     <RowDefinition Height="Auto" /> <!-- Toolbar -->
                     <RowDefinition Height="*" />    <!-- Projects + details -->
-                    <RowDefinition Height="170" />  <!-- Terminal -->
+                    <RowDefinition Height="9" />    <!-- Terminal splitter -->
+                    <RowDefinition x:Name="TerminalRow" Height="170" MinHeight="42" /> <!-- Terminal -->
                     <RowDefinition Height="Auto" /> <!-- Footer -->
                 </Grid.RowDefinitions>
 
@@ -217,7 +219,9 @@
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <ComboBox x:Name="DefaultTargetBox" Grid.Column="0" ToolTip="Default Gradle version used for new scans" />
+                            <ComboBox x:Name="DefaultTargetBox" Grid.Column="0" ToolTip="Default Gradle version used for new scans"
+                                      AutomationProperties.Name="Default Gradle version"
+                                      ItemTemplate="{StaticResource VersionOptionTemplate}" />
                             <Button x:Name="UseDefaultBtn" Grid.Column="1" Content="Use as target for selected"
                                     Margin="8,0,0,0" Padding="12,6" Click="UseDefault_Click" />
                             <TextBlock Grid.Column="2" Text="The latest stable release is used when no default is chosen."
@@ -251,8 +255,10 @@
                                        VerticalAlignment="Center" Margin="0,0,8,0" />
                             <TextBox x:Name="TargetBox" Width="104" Padding="8,6" FontFamily="{DynamicResource MonoFont}"
                                      ToolTip="Target Gradle version, e.g. 9.8.2" />
-                            <ComboBox x:Name="VersionPicker" Width="124" Margin="6,0,0,0"
+                            <ComboBox x:Name="VersionPicker" Width="150" Margin="6,0,0,0"
                                       SelectionChanged="VersionPicker_SelectionChanged"
+                                      AutomationProperties.Name="Gradle version picker"
+                                      ItemTemplate="{StaticResource VersionOptionTemplate}"
                                       ToolTip="Pick a stable, installed, or project version" />
                             <Button x:Name="RefreshVersionsBtn" Content="Refresh" Margin="6,0,0,0" Padding="10,6" Click="RefreshVersions_Click"
                                     ToolTip="Fetch the latest stable Gradle versions" />
@@ -327,10 +333,12 @@
                             <Grid>
                                 <DataGrid x:Name="ProjectsGrid" AutoGenerateColumns="False" CanUserAddRows="False"
                                           HeadersVisibility="Column" SelectionMode="Single" BorderThickness="0"
+                                          ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                                          ScrollViewer.VerticalScrollBarVisibility="Auto"
                                           SelectionChanged="ProjectsGrid_SelectionChanged"
                                           MouseDoubleClick="ProjectsGrid_MouseDoubleClick">
                                     <DataGrid.Columns>
-                                        <DataGridTemplateColumn Header="" Width="42">
+                                        <DataGridTemplateColumn Header="" Width="42" MinWidth="42">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
                                                     <CheckBox IsChecked="{Binding Selected, UpdateSourceTrigger=PropertyChanged}"
@@ -339,7 +347,7 @@
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
 
-                                        <DataGridTemplateColumn Header="Project" Width="170" IsReadOnly="True">
+                                        <DataGridTemplateColumn Header="Project" Width="170" MinWidth="170" IsReadOnly="True">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
                                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -354,7 +362,7 @@
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
 
-                                        <DataGridTemplateColumn Header="Type" Width="76" IsReadOnly="True">
+                                        <DataGridTemplateColumn Header="Type" Width="76" MinWidth="76" IsReadOnly="True">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
                                                     <Border x:Name="TypePill" CornerRadius="5" Padding="7,2"
@@ -372,18 +380,18 @@
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
 
-                                        <DataGridTextColumn Header="Gradle" Binding="{Binding CurrentGradle}" Width="68" IsReadOnly="True"
+                                        <DataGridTextColumn Header="Gradle" Binding="{Binding CurrentGradle}" Width="68" MinWidth="68" IsReadOnly="True"
                                                             FontFamily="{DynamicResource MonoFont}" FontWeight="Medium" />
-                                        <DataGridTextColumn Header="AGP" Binding="{Binding Agp}" Width="68" IsReadOnly="True"
+                                        <DataGridTextColumn Header="AGP" Binding="{Binding Agp}" Width="68" MinWidth="68" IsReadOnly="True"
                                                             FontFamily="{DynamicResource MonoFont}" FontWeight="Medium" />
                                         <DataGridTextColumn Header="Target" Binding="{Binding Target, UpdateSourceTrigger=LostFocus}"
-                                                            Width="102" FontFamily="{DynamicResource MonoFont}" FontWeight="SemiBold"
+                                                            Width="102" MinWidth="102" FontFamily="{DynamicResource MonoFont}" FontWeight="SemiBold"
                                                             EditingElementStyle="{StaticResource GridEditTextBox}" />
                                         <DataGridTextColumn Header="Target AGP" Binding="{Binding TargetAgp, UpdateSourceTrigger=LostFocus}"
-                                                            Width="100" FontFamily="{DynamicResource MonoFont}" FontWeight="SemiBold"
+                                                            Width="100" MinWidth="100" FontFamily="{DynamicResource MonoFont}" FontWeight="SemiBold"
                                                             EditingElementStyle="{StaticResource GridEditTextBox}" />
 
-                                        <DataGridTemplateColumn Header="Status" Width="136" IsReadOnly="True">
+                                        <DataGridTemplateColumn Header="Status" Width="136" MinWidth="136" IsReadOnly="True">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
                                                     <Border x:Name="StatusPill" CornerRadius="5" Padding="7,2" HorizontalAlignment="Left"
@@ -430,7 +438,7 @@
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
 
-                                        <DataGridTemplateColumn Header="Warning" Width="190" IsReadOnly="True">
+                                        <DataGridTemplateColumn Header="Warning" Width="190" MinWidth="190" IsReadOnly="True">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
                                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -480,13 +488,32 @@
                                 </Grid>
                             </Border>
 
+                            <Border DockPanel.Dock="Bottom" Background="{DynamicResource CardBgBrush}"
+                                    BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,1,0,0"
+                                    Padding="10,8" Visibility="{Binding ElementName=DetailContent, Path=Visibility}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Button x:Name="OpenFolderBtn" Content="Open folder" Margin="0,0,3,0"
+                                            Padding="6,6" Click="OpenFolder_Click" />
+                                    <Button x:Name="CopyPathBtn" Grid.Column="1" Content="Copy path"
+                                            Margin="3,0,3,0" Padding="6,6" Click="CopyPath_Click" />
+                                    <Button x:Name="SelectOnlyBtn" Grid.Column="2" Content="Select only"
+                                            Margin="3,0,0,0" Padding="6,6" Click="SelectOnly_Click" />
+                                </Grid>
+                            </Border>
+
                             <Grid>
                                 <TextBlock x:Name="DetailEmpty" Text="Select a project to inspect its versions."
                                            TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"
                                            VerticalAlignment="Center" HorizontalAlignment="Center" Margin="28,0" />
 
-                                <ScrollViewer x:Name="DetailContent" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
-                                    <StackPanel Margin="14,12,14,14">
+                                <ScrollViewer x:Name="DetailContent" Visibility="Collapsed"
+                                              VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                    <StackPanel Margin="14,10,14,10">
                                         <StackPanel Orientation="Horizontal">
                                             <Border Width="34" Height="34" CornerRadius="9" Background="{DynamicResource PrimaryLightBrush}" Margin="0,0,10,0">
                                                 <Path Data="M 3 4 C 3 2.9 3.9 2 5 2 L 9 2 L 11 4 L 19 4 C 20.1 4 21 4.9 21 6 L 21 16 C 21 17.1 20.1 18 19 18 L 5 18 C 3.9 18 3 17.1 3 16 Z"
@@ -500,21 +527,25 @@
                                             </StackPanel>
                                         </StackPanel>
 
-                                        <Border Background="{DynamicResource WindowBgAltBrush}" CornerRadius="7" Padding="9,7" Margin="0,12,0,12">
+                                        <Border Background="{DynamicResource WindowBgAltBrush}" CornerRadius="7" Padding="9,7" Margin="0,10,0,10">
                                             <TextBlock x:Name="DetailPath" FontSize="10.5" TextWrapping="Wrap"
                                                        Foreground="{DynamicResource TextSecondaryBrush}"
                                                        ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
                                         </Border>
 
                                         <Border x:Name="DetailWarningBorder" Background="{DynamicResource WarningLightBrush}" CornerRadius="7"
-                                                Padding="9,7" Margin="0,0,0,12" Visibility="Collapsed">
-                                            <StackPanel Orientation="Horizontal">
+                                                Padding="9,7" Margin="0,0,0,10" Visibility="Collapsed">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
                                                 <TextBlock Text="&#xE7BA;" FontFamily="Segoe MDL2 Assets" FontSize="13"
                                                            Foreground="{DynamicResource WarningForegroundBrush}" Margin="0,0,7,0"
                                                            VerticalAlignment="Top" />
-                                                <TextBlock x:Name="DetailWarning" TextWrapping="Wrap" FontSize="11"
+                                                <TextBlock x:Name="DetailWarning" Grid.Column="1" TextWrapping="Wrap" FontSize="11"
                                                            Foreground="{DynamicResource WarningForegroundBrush}" />
-                                            </StackPanel>
+                                            </Grid>
                                         </Border>
 
                                         <Grid>
@@ -550,7 +581,7 @@
                                                        Foreground="{DynamicResource PrimaryBrush}" HorizontalAlignment="Right" />
                                         </Grid>
 
-                                        <Border Background="{DynamicResource WindowBgAltBrush}" CornerRadius="7" Padding="9,7" Margin="0,12,0,0">
+                                        <Border Background="{DynamicResource WindowBgAltBrush}" CornerRadius="7" Padding="9,7" Margin="0,10,0,0">
                                             <StackPanel Orientation="Horizontal">
                                                 <Ellipse x:Name="DetailStatusDot" Width="7" Height="7"
                                                          Fill="{DynamicResource SuccessBrush}" Margin="0,0,7,0" VerticalAlignment="Center" />
@@ -559,14 +590,6 @@
                                             </StackPanel>
                                         </Border>
 
-                                        <WrapPanel Margin="0,14,0,0">
-                                            <Button x:Name="OpenFolderBtn" Content="Open folder" Margin="0,0,6,6"
-                                                    Padding="10,6" Click="OpenFolder_Click" />
-                                            <Button x:Name="CopyPathBtn" Content="Copy path" Margin="0,0,6,6"
-                                                    Padding="10,6" Click="CopyPath_Click" />
-                                            <Button x:Name="SelectOnlyBtn" Content="Select only" Padding="10,6"
-                                                    Click="SelectOnly_Click" />
-                                        </WrapPanel>
                                     </StackPanel>
                                 </ScrollViewer>
                             </Grid>
@@ -574,9 +597,18 @@
                     </Border>
                 </Grid>
 
+                <!-- Terminal splitter -->
+                <Grid Grid.Row="5" Margin="0,2,0,2">
+                    <Border Height="1" Background="{DynamicResource TerminalSplitterBrush}"
+                            VerticalAlignment="Center" HorizontalAlignment="Stretch" />
+                    <GridSplitter x:Name="TerminalSplitter" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                  Background="Transparent" ResizeBehavior="PreviousAndNext" ResizeDirection="Rows"
+                                  Cursor="SizeNS" ToolTip="Drag to resize the log" />
+                </Grid>
+
                 <!-- Terminal -->
-                <Border Grid.Row="5" Background="{DynamicResource TerminalBgBrush}" BorderBrush="{DynamicResource TerminalBorderBrush}"
-                        BorderThickness="1" CornerRadius="10" Margin="0,10,0,0" ClipToBounds="True">
+                <Border Grid.Row="6" Background="{DynamicResource TerminalBgBrush}" BorderBrush="{DynamicResource TerminalBorderBrush}"
+                        BorderThickness="1" CornerRadius="10" Margin="0,4,0,0" ClipToBounds="True">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
@@ -595,18 +627,21 @@
                                           StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                                           Width="14" Height="14" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Center" />
                                     <TextBlock Text="Execution &amp; diagnostic log" FontSize="11" FontWeight="Bold"
-                                               Foreground="#F1F5F9" VerticalAlignment="Center" />
-                                    <TextBlock x:Name="LogEmpty" Text="  —  Ready" FontSize="10.5"
-                                               Foreground="#64748B" VerticalAlignment="Center" />
+                                               Foreground="{DynamicResource TerminalHeaderTextBrush}" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="LogEmpty" Text="  Ready" FontSize="10.5"
+                                               Foreground="{DynamicResource TerminalMutedBrush}" VerticalAlignment="Center" />
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                    <Button Content="Copy" Click="CopyLog_Click" Background="Transparent" Foreground="#CBD5E1"
-                                            BorderThickness="0" Padding="8,2" FontSize="11" FontWeight="Medium" Cursor="Hand" />
-                                    <Button Content="Save" Click="SaveLog_Click" Background="Transparent" Foreground="#CBD5E1"
-                                            BorderThickness="0" Padding="8,2" FontSize="11" FontWeight="Medium" Cursor="Hand" />
-                                    <Button Content="Clear" Click="ClearLog_Click" Background="Transparent" Foreground="#CBD5E1"
-                                            BorderThickness="0" Padding="8,2" FontSize="11" FontWeight="Medium" Cursor="Hand" />
+                                    <Button x:Name="TerminalToggleBtn" Content="&#xE70E;" FontFamily="Segoe MDL2 Assets"
+                                            Style="{StaticResource IconButtonStyle}" Width="26" Height="24" Margin="0,0,2,0"
+                                            AutomationProperties.Name="Toggle log" Click="TerminalToggle_Click" ToolTip="Collapse log" />
+                                    <Button Content="Copy" Click="CopyLog_Click" Style="{StaticResource GhostButtonStyle}"
+                                            Foreground="{DynamicResource TerminalActionBrush}" Padding="8,2" FontSize="11" />
+                                    <Button Content="Save" Click="SaveLog_Click" Style="{StaticResource GhostButtonStyle}"
+                                            Foreground="{DynamicResource TerminalActionBrush}" Padding="8,2" FontSize="11" />
+                                    <Button Content="Clear" Click="ClearLog_Click" Style="{StaticResource GhostButtonStyle}"
+                                            Foreground="{DynamicResource TerminalActionBrush}" Padding="8,2" FontSize="11" />
                                 </StackPanel>
                             </Grid>
                         </Border>
@@ -617,7 +652,7 @@
                 </Border>
 
                 <!-- Footer -->
-                <Grid Grid.Row="6" Margin="2,7,2,0">
+                <Grid Grid.Row="7" Margin="2,7,2,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
