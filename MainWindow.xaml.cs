@@ -1258,9 +1258,36 @@ public partial class MainWindow : Window
             _s.UseRecycleBin = dlg.UseRecycleBin;
             var chosen = dlg.Selected;
             var useRecycleBin = dlg.UseRecycleBin;
-            SetBusy(true, "Deleting selected items...");
+
+            CancelCurrent();
+            _cts = new CancellationTokenSource();
+            var ct = _cts.Token;
+
+            SetBusy(true, "Deleting selected items...", isIndeterminate: false, percent: 0,
+                detail: $"Starting cleanup of {chosen.Count} item(s)...", countText: $"0 of {chosen.Count}");
             SetStatus("Deleting...", "DangerBrush");
-            var (freed, errors) = await Task.Run(() => GradleCleaner.Delete(chosen, useRecycleBin));
+            Log($"Starting cleanup: deleting {chosen.Count} unused item(s) from {home} (Recycle Bin: {(useRecycleBin ? "Enabled" : "Disabled")}) ...");
+
+            var (freed, errors) = await Task.Run(() => GradleCleaner.Delete(chosen, useRecycleBin, progress =>
+            {
+                var pct = Math.Round((double)(progress.CurrentIndex - 1) / progress.TotalCount * 100.0, 1);
+                var itemLabel = $"{progress.CurrentItem.Kind.ToUpperInvariant()} {progress.CurrentItem.Version} ({Format.Size(progress.CurrentItem.Size)})";
+                Dispatcher.Invoke(() =>
+                {
+                    SetProgress(pct, detail: $"Deleting {itemLabel}...", countText: $"{progress.CurrentIndex} of {progress.TotalCount}");
+                    Log($"  [{progress.CurrentIndex}/{progress.TotalCount}] Deleting {itemLabel} -> {progress.CurrentItem.Path}");
+                });
+            }, ct));
+
+            if (ct.IsCancellationRequested)
+            {
+                Log($"Cleanup cancelled by user. Partially freed: {Format.Size(freed)}.");
+                SetStatus($"Cleanup cancelled. Freed {Format.Size(freed)}.", "WarningBrush");
+                ToastService.Show($"Cleanup cancelled. Freed {Format.Size(freed)}.", ToastKind.Warning);
+                return;
+            }
+
+            SetProgress(100, detail: "Cleanup complete", countText: $"{chosen.Count} of {chosen.Count}");
             Log($"Freed {Format.Size(freed)} from {home}.");
             foreach (var error in errors) Log("ERROR " + error);
             SetStatus($"Freed {Format.Size(freed)}" + (errors.Count > 0 ? $" ({errors.Count} error(s), see log)" : ""),

@@ -542,11 +542,20 @@ public static class GradleCleaner
         return total;
     }
 
-    public static (long, List<string>) Delete(IEnumerable<CleanItem> items, bool useRecycleBin = false)
+    public record CleanProgress(int CurrentIndex, int TotalCount, CleanItem CurrentItem, long TotalFreedBytes);
+
+    public static (long, List<string>) Delete(
+        IReadOnlyList<CleanItem> items,
+        bool useRecycleBin = false,
+        Action<CleanProgress>? onProgress = null,
+        CancellationToken ct = default)
     {
         long freed = 0; var errors = new List<string>();
-        foreach (var i in items)
+        for (int idx = 0; idx < items.Count; idx++)
         {
+            if (ct.IsCancellationRequested) break;
+            var i = items[idx];
+            onProgress?.Invoke(new CleanProgress(idx + 1, items.Count, i, freed));
             try
             {
                 if (useRecycleBin)

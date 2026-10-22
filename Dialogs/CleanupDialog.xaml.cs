@@ -62,8 +62,8 @@ public partial class CleanupDialog : Window
     {
         if (HintText is null) return;
         HintText.Text = UseRecycleBin
-            ? "You can restore deleted items from the Recycle Bin."
-            : "Permanent delete: items will not go to the Recycle Bin.";
+            ? "Send to Recycle Bin (safe, but slower for large caches)."
+            : "Permanent delete: deletes immediately without Recycle Bin (much faster).";
     }
 
     void SelectAll_Click(object sender, RoutedEventArgs e)

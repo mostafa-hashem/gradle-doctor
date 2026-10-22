@@ -31,6 +31,45 @@ public class GradleCleanerTests
         Assert.All(unused, item => Assert.Equal("dist", item.Kind));
     }
 
+    [Fact]
+    public void DeleteReportsProgressAndFreesSpace()
+    {
+        using var temp = new TempDirectory();
+        CreateDistribution(temp.Path, "8.6");
+        CreateDistribution(temp.Path, "9.0");
+
+        var unused = GradleCleaner.FindUnused(temp.Path, new HashSet<string>());
+        var progressReports = new List<GradleCleaner.CleanProgress>();
+
+        var (freed, errors) = GradleCleaner.Delete(unused, useRecycleBin: false, onProgress: p => progressReports.Add(p));
+
+        Assert.Empty(errors);
+        Assert.Equal(2, progressReports.Count);
+        Assert.Equal(1, progressReports[0].CurrentIndex);
+        Assert.Equal(2, progressReports[0].TotalCount);
+        Assert.Equal(2, progressReports[1].CurrentIndex);
+        Assert.Equal(2, progressReports[1].TotalCount);
+    }
+
+    [Fact]
+    public void DeleteSupportsCancellation()
+    {
+        using var temp = new TempDirectory();
+        CreateDistribution(temp.Path, "8.6");
+        CreateDistribution(temp.Path, "9.0");
+
+        var unused = GradleCleaner.FindUnused(temp.Path, new HashSet<string>());
+        using var cts = new CancellationTokenSource();
+        cts.Cancel(); // Pre-cancelled
+
+        var (freed, errors) = GradleCleaner.Delete(unused, useRecycleBin: false, ct: cts.Token);
+
+        Assert.Equal(0, freed);
+        Assert.Empty(errors);
+        // Folders should still exist because cancellation stopped execution before any delete
+        Assert.True(Directory.Exists(unused[0].Path));
+    }
+
     static void CreateDistribution(string home, string version)
     {
         Directory.CreateDirectory(Path.Combine(home, "wrapper", "dists", $"gradle-{version}-bin"));
