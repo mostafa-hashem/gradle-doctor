@@ -131,18 +131,42 @@ public class Compat
         var f = File.Exists(UserFile) ? UserFile : DefaultFile;
         try
         {
-            return JsonSerializer.Deserialize<Compat>(File.ReadAllText(f),
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+            if (File.Exists(f))
+            {
+                return JsonSerializer.Deserialize<Compat>(File.ReadAllText(f),
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+            }
+
+            using var stream = typeof(Compat).Assembly.GetManifestResourceStream("GradleDoctor.compat.json");
+            if (stream != null)
+            {
+                return JsonSerializer.Deserialize<Compat>(stream,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+            }
         }
-        catch { return new(); }
+        catch { }
+        return new();
     }
 
     public static void EnsureUserCopy()
     {
         if (File.Exists(UserFile)) return;
         Directory.CreateDirectory(System.IO.Path.GetDirectoryName(UserFile)!);
-        if (File.Exists(DefaultFile)) File.Copy(DefaultFile, UserFile);
-        else File.WriteAllText(UserFile, "{\n  \"agpMinGradle\": {},\n  \"gradleMinAgp\": {}\n}\n");
+        if (File.Exists(DefaultFile))
+        {
+            File.Copy(DefaultFile, UserFile);
+            return;
+        }
+
+        using var stream = typeof(Compat).Assembly.GetManifestResourceStream("GradleDoctor.compat.json");
+        if (stream != null)
+        {
+            using var file = File.Create(UserFile);
+            stream.CopyTo(file);
+            return;
+        }
+
+        File.WriteAllText(UserFile, "{\n  \"agpMinGradle\": {},\n  \"gradleMinAgp\": {}\n}\n");
     }
 
     internal static string MajorMinor(string v)

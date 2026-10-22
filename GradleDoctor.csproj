@@ -15,6 +15,7 @@
     <None Update="compat.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <EmbeddedResource Include="compat.json" />
     <Resource Include="Assets\GradleDoctor.ico" />
     <Compile Remove="GradleDoctor.Tests\**" />
     <Page Remove="GradleDoctor.Tests\**" />
