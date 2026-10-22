@@ -24,6 +24,7 @@ public partial class MainWindow : Window
             : _s.SkipFolders;
         KeepBox.Text = _s.KeepVersions;
         VerifyCheck.IsChecked = _s.VerifyBuild;
+        UpdateAgpCheck.IsChecked = _s.UpdateAgp;
         TaskBox.Text = _s.VerifyTask;
         TimeoutBox.Text = _s.TimeoutMinutes.ToString();
         Closing += (_, _) => SaveSettings();
@@ -68,6 +69,7 @@ public partial class MainWindow : Window
         _s.SkipFolders = SkipBox.Text.Trim();
         _s.KeepVersions = KeepBox.Text.Trim();
         _s.VerifyBuild = VerifyCheck.IsChecked == true;
+        _s.UpdateAgp = UpdateAgpCheck.IsChecked == true;
         _s.VerifyTask = VerifyTask;
         _s.TimeoutMinutes = Timeout;
         _s.Save();
@@ -192,7 +194,12 @@ public partial class MainWindow : Window
         _scanned = true;
 
         var compat = Compat.Load();
-        foreach (var p in _projects) p.Warning = compat.Check(p.Agp, p.CurrentGradle);
+        foreach (var p in _projects)
+        {
+            p.Warning = compat.Check(p.Agp, p.CurrentGradle);
+            if (string.IsNullOrEmpty(p.TargetAgp) && p.Agp != "-")
+                p.TargetAgp = p.Agp;
+        }
         RefreshGrid();
 
         var home = Home;
@@ -222,10 +229,16 @@ public partial class MainWindow : Window
         var t = ReadGlobalTarget();
         if (t == null) return;
         var compat = Compat.Load();
+        bool autoAgp = UpdateAgpCheck.IsChecked == true;
         foreach (var p in _projects.Where(p => p.Selected))
         {
             p.Target = t;
-            p.Warning = compat.Check(p.Agp, t);
+            if (autoAgp && p.Agp != "-")
+            {
+                p.TargetAgp = compat.BestAgpForGradle(t, p.Agp);
+            }
+            var effectiveAgp = !string.IsNullOrWhiteSpace(p.TargetAgp) ? p.TargetAgp : p.Agp;
+            p.Warning = compat.Check(effectiveAgp, t);
         }
     }
 
@@ -246,16 +259,32 @@ public partial class MainWindow : Window
 
         SetButtons(false);
         var compat = Compat.Load();
+        bool autoAgp = UpdateAgpCheck.IsChecked == true;
         int changes = 0;
         foreach (var p in rows)
         {
             if (!VersionFormat.IsMatch(p.Target)) { p.Status = "Bad target"; continue; }
-            p.Warning = compat.Check(p.Agp, p.Target);
-            p.Status = p.CurrentGradle == p.Target ? "Up to date" : "Will change";
+            if (autoAgp && string.IsNullOrWhiteSpace(p.TargetAgp) && p.Agp != "-")
+                p.TargetAgp = compat.BestAgpForGradle(p.Target, p.Agp);
+
+            var effAgp = !string.IsNullOrWhiteSpace(p.TargetAgp) ? p.TargetAgp : p.Agp;
+            p.Warning = compat.Check(effAgp, p.Target);
+
+            bool gradleDiff = p.CurrentGradle != p.Target;
+            bool agpDiff = autoAgp && p.Agp != "-" && !string.IsNullOrWhiteSpace(p.TargetAgp) && p.Agp != p.TargetAgp;
+
+            p.Status = (gradleDiff || agpDiff) ? "Will change" : "Up to date";
             if (p.Status == "Will change") changes++;
         }
 
         Log($"[Dry run] {changes} of {rows.Count} selected project(s) would change. Nothing was modified.");
+        foreach (var p in rows.Where(p => p.Status == "Will change"))
+        {
+            var details = new List<string>();
+            if (p.CurrentGradle != p.Target) details.Add($"Gradle {p.CurrentGradle} -> {p.Target}");
+            if (autoAgp && p.Agp != "-" && !string.IsNullOrWhiteSpace(p.TargetAgp) && p.TargetAgp != p.Agp) details.Add($"AGP {p.Agp} -> {p.TargetAgp}");
+            Log($"   {p.Name}: {string.Join(", ", details)}");
+        }
         foreach (var p in rows.Where(p => p.Warning.Length > 0))
             Log($"   WARNING {p.Name}: {p.Warning}");
 
@@ -292,28 +321,46 @@ public partial class MainWindow : Window
         }
 
         var compat = Compat.Load();
+        bool autoAgp = UpdateAgpCheck.IsChecked == true;
         foreach (var p in rows)
-            if (VersionFormat.IsMatch(p.Target)) p.Warning = compat.Check(p.Agp, p.Target);
+        {
+            if (VersionFormat.IsMatch(p.Target))
+            {
+                if (autoAgp && string.IsNullOrWhiteSpace(p.TargetAgp) && p.Agp != "-")
+                    p.TargetAgp = compat.BestAgpForGradle(p.Target, p.Agp);
+                var effAgp = !string.IsNullOrWhiteSpace(p.TargetAgp) ? p.TargetAgp : p.Agp;
+                p.Warning = compat.Check(effAgp, p.Target);
+            }
+        }
 
-        var todo = rows.Where(p => VersionFormat.IsMatch(p.Target) && p.CurrentGradle != p.Target).ToList();
+        var todo = rows.Where(p =>
+            VersionFormat.IsMatch(p.Target) &&
+            (p.CurrentGradle != p.Target || (autoAgp && p.Agp != "-" && !string.IsNullOrWhiteSpace(p.TargetAgp) && p.Agp != p.TargetAgp))
+        ).ToList();
+
         foreach (var p in rows.Where(p => !VersionFormat.IsMatch(p.Target))) p.Status = "Bad target";
 
         if (todo.Count == 0)
         {
-            MessageBox.Show("Nothing to change: selected projects already match their target.", "Gradle Doctor");
+            MessageBox.Show("Nothing to change: selected projects already match their target Gradle and AGP.", "Gradle Doctor");
             return;
         }
 
         bool verify = VerifyCheck.IsChecked == true;
         int warns = todo.Count(p => p.Warning.Length > 0);
-        var ok = MessageBox.Show(
-            $"Update {todo.Count} project(s)?\n\n" +
+        int agpCount = todo.Count(p => autoAgp && p.Agp != "-" && !string.IsNullOrWhiteSpace(p.TargetAgp) && p.Agp != p.TargetAgp);
+
+        var msg = $"Update {todo.Count} project(s)?\n\n" +
+            $"• Gradle wrapper version updates: {todo.Count(p => p.CurrentGradle != p.Target)}\n" +
+            (agpCount > 0 ? $"• AGP (Android Gradle Plugin) updates: {agpCount}\n" : "") +
+            "\n" +
             (warns > 0 ? $"{warns} project(s) have compatibility warnings (see the Warning column).\n\n" : "") +
-            "A backup (gradle-wrapper.properties.gradledoctor.bak) is created next to each file.\n" +
+            "A backup (.gradledoctor.bak) is created next to each modified file.\n" +
             (verify
-                ? $"After each update 'gradlew {VerifyTask}' runs. If it fails, the project is rolled back.\n(The new Gradle version will be downloaded, so you need internet.)"
-                : "Builds will NOT be run. Tick the verify option in Settings to build and roll back on failure."),
-            "Gradle Doctor", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                ? $"After each update 'gradlew {VerifyTask}' runs. If it fails, the project is rolled back automatically.\n(The new Gradle version will be downloaded, so you need internet.)"
+                : "Builds will NOT be run. Tick the verify option in Settings to build and roll back on failure.");
+
+        var ok = MessageBox.Show(msg, "Gradle Doctor", MessageBoxButton.YesNo, MessageBoxImage.Warning);
         if (ok != MessageBoxResult.Yes) return;
 
         SaveSettings();
@@ -325,8 +372,16 @@ public partial class MainWindow : Window
             try
             {
                 p.Status = "Updating...";
-                if (!ProjectScanner.UpdateWrapper(p, p.Target)) { p.Status = "No change"; continue; }
-                Log($"{p.Name}: Gradle -> {p.Target}");
+                bool gradleChanged = ProjectScanner.UpdateWrapper(p, p.Target);
+                bool agpChanged = autoAgp && !string.IsNullOrWhiteSpace(p.TargetAgp) && p.Agp != "-" && p.Agp != p.TargetAgp
+                    && ProjectScanner.UpdateAgp(p, p.TargetAgp);
+
+                if (!gradleChanged && !agpChanged) { p.Status = "No change"; continue; }
+
+                var logMsg = $"{p.Name}:";
+                if (gradleChanged) logMsg += $" Gradle -> {p.Target}";
+                if (agpChanged) logMsg += $" | AGP -> {p.TargetAgp}";
+                Log(logMsg);
 
                 if (!verify) { p.Status = "Updated"; success++; continue; }
 
@@ -339,7 +394,7 @@ public partial class MainWindow : Window
                 {
                     ProjectScanner.Restore(p);
                     p.Status = "Rolled back";
-                    Log($"{p.Name}: build FAILED, rolled back to Gradle {p.CurrentGradle}.");
+                    Log($"{p.Name}: build FAILED, rolled back to Gradle {p.CurrentGradle} / AGP {p.Agp}.");
                     rolled++;
                 }
                 else if (result == null) { p.Status = "Updated (not built)"; success++; }
@@ -357,6 +412,7 @@ public partial class MainWindow : Window
         StatusText.Text = $"Done: {success} updated, {rolled} rolled back, {failed} failed.";
         SetButtons(true);
     }
+
 
     // ---------- clean ----------
 

@@ -34,7 +34,7 @@ public class ProjectInfo : INotifyPropertyChanged
     }
 
     bool _selected = true;
-    string _current = "?", _target = "", _status = "", _warning = "";
+    string _current = "?", _target = "", _targetAgp = "", _status = "", _warning = "";
 
     public bool Selected { get => _selected; set => Set(ref _selected, value); }
     public string Name { get; set; } = "";
@@ -44,6 +44,7 @@ public class ProjectInfo : INotifyPropertyChanged
     public string Agp { get; set; } = "-";
     public string CurrentGradle { get => _current; set => Set(ref _current, value); }
     public string Target { get => _target; set => Set(ref _target, value); }
+    public string TargetAgp { get => _targetAgp; set => Set(ref _targetAgp, value); }
     public string Status { get => _status; set => Set(ref _status, value); }
     public string Warning { get => _warning; set => Set(ref _warning, value); }
 }
@@ -76,6 +77,7 @@ public class AppSettings
     public string SkipFolders { get; set; } = DefaultSkipFolders;
     public string KeepVersions { get; set; } = "";        // extra versions never deleted
     public bool VerifyBuild { get; set; } = false;
+    public bool UpdateAgp { get; set; } = true;
     public string VerifyTask { get; set; } = "assembleDebug";
     public int TimeoutMinutes { get; set; } = 15;
 
@@ -155,6 +157,50 @@ public class Compat
             msgs.Add($"Gradle {best}+ needs AGP >= {GradleMinAgp[best]}");
 
         return string.Join("; ", msgs);
+    }
+
+    /// Finds the best compatible AGP version for a target Gradle version.
+    public string BestAgpForGradle(string gradle, string currentAgp = "-")
+    {
+        var cmp = Comparer<string>.Create(ProjectScanner.CompareVersions);
+
+        // If current AGP is valid and already compatible with target Gradle, keep it!
+        if (currentAgp != "-" && !string.IsNullOrWhiteSpace(currentAgp))
+        {
+            var warn = Check(currentAgp, gradle);
+            if (string.IsNullOrEmpty(warn)) return currentAgp;
+        }
+
+        // Look for minimum AGP required by this Gradle in gradleMinAgp
+        string? minAgpReq = null;
+        foreach (var k in GradleMinAgp.Keys.Where(k => ProjectScanner.CompareVersions(gradle, k) >= 0).OrderByDescending(k => k, cmp))
+        {
+            minAgpReq = GradleMinAgp[k];
+            break;
+        }
+
+        if (minAgpReq != null)
+        {
+            if (currentAgp != "-" && ProjectScanner.CompareVersions(currentAgp, minAgpReq) >= 0)
+                return currentAgp;
+            return minAgpReq.Count(c => c == '.') == 1 ? minAgpReq + ".0" : minAgpReq;
+        }
+
+        // Otherwise find highest AGP supported by this Gradle in agpMinGradle
+        string? best = null;
+        foreach (var (agpKey, minG) in AgpMinGradle.OrderByDescending(kv => kv.Key, cmp))
+        {
+            if (ProjectScanner.CompareVersions(gradle, minG) >= 0)
+            {
+                best = agpKey;
+                break;
+            }
+        }
+
+        if (best != null)
+            return best.Count(c => c == '.') == 1 ? best + ".0" : best;
+
+        return currentAgp != "-" ? currentAgp : "8.7.0";
     }
 }
 
@@ -311,14 +357,93 @@ public static class ProjectScanner
         return true;
     }
 
-    /// Restores the properties file from its backup.
+    static readonly Regex PluginReplaceRx = new(
+        @"(com\.android\.(?:application|library)[""']\)?\s*(?:version\s*)?[""'])\d+(?:\.\d+)+(?:-[A-Za-z0-9.]+)?([""'])",
+        RegexOptions.Compiled);
+
+    static readonly Regex ClasspathReplaceRx = new(
+        @"(com\.android\.tools\.build:gradle:)\d+(?:\.\d+)+(?:-[A-Za-z0-9.]+)?(?=[""'])",
+        RegexOptions.Compiled);
+
+    static readonly Regex TomlReplaceRx = new(
+        @"^(\s*(?:agp|android(?:GradlePlugin)?|android-gradle-plugin|com-android-application)\s*=\s*[""'])\d+(?:\.\d+)+(?:-[A-Za-z0-9.]+)?([""'])",
+        RegexOptions.Compiled | RegexOptions.Multiline);
+
+    /// Updates AGP in settings.gradle, build.gradle, or libs.versions.toml. Keeps .bak copy.
+    public static bool UpdateAgp(ProjectInfo p, string newAgp)
+    {
+        bool changedAny = false;
+        var candidateFiles = new List<string>
+        {
+            System.IO.Path.Combine(p.Path, "settings.gradle"),
+            System.IO.Path.Combine(p.Path, "settings.gradle.kts"),
+            System.IO.Path.Combine(p.Path, "build.gradle"),
+            System.IO.Path.Combine(p.Path, "build.gradle.kts"),
+            System.IO.Path.Combine(p.Path, "gradle", "libs.versions.toml"),
+            System.IO.Path.Combine(p.Path, "app", "build.gradle"),
+            System.IO.Path.Combine(p.Path, "app", "build.gradle.kts")
+        };
+
+        foreach (var file in candidateFiles)
+        {
+            if (!File.Exists(file)) continue;
+            try
+            {
+                var text = File.ReadAllText(file);
+                var updated = PluginReplaceRx.Replace(text, $"${{1}}{newAgp}$2");
+                updated = ClasspathReplaceRx.Replace(updated, $"${{1}}{newAgp}");
+                updated = TomlReplaceRx.Replace(updated, $"${{1}}{newAgp}$2");
+
+                if (updated != text)
+                {
+                    var bak = file + ".gradledoctor.bak";
+                    File.Copy(file, bak, overwrite: true);
+                    File.WriteAllText(file, updated);
+                    changedAny = true;
+                }
+            }
+            catch { }
+        }
+
+        if (changedAny) p.Agp = newAgp;
+        return changedAny;
+    }
+
+    /// Restores wrapper and any AGP build files from backups.
     public static void Restore(ProjectInfo p)
     {
         var bak = BakPath(p);
-        if (!File.Exists(bak)) return;
-        File.Copy(bak, p.PropsFile, overwrite: true);
-        File.Delete(bak);
-        p.CurrentGradle = ReadVersion(p.PropsFile);
+        if (File.Exists(bak))
+        {
+            File.Copy(bak, p.PropsFile, overwrite: true);
+            File.Delete(bak);
+            p.CurrentGradle = ReadVersion(p.PropsFile);
+        }
+
+        var candidateFiles = new List<string>
+        {
+            System.IO.Path.Combine(p.Path, "settings.gradle"),
+            System.IO.Path.Combine(p.Path, "settings.gradle.kts"),
+            System.IO.Path.Combine(p.Path, "build.gradle"),
+            System.IO.Path.Combine(p.Path, "build.gradle.kts"),
+            System.IO.Path.Combine(p.Path, "gradle", "libs.versions.toml"),
+            System.IO.Path.Combine(p.Path, "app", "build.gradle"),
+            System.IO.Path.Combine(p.Path, "app", "build.gradle.kts")
+        };
+
+        foreach (var file in candidateFiles)
+        {
+            var fbak = file + ".gradledoctor.bak";
+            if (File.Exists(fbak))
+            {
+                try
+                {
+                    File.Copy(fbak, file, overwrite: true);
+                    File.Delete(fbak);
+                }
+                catch { }
+            }
+        }
     }
 
     public static int CompareVersions(string a, string b)

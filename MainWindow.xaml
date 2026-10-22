@@ -121,6 +121,7 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <!-- Gradle Home -->
@@ -140,8 +141,15 @@
                 <TextBox x:Name="KeepBox" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,0,0,8" Padding="8,5"
                          ToolTip="Comma-separated Gradle versions that cleanup must never delete, e.g. 8.14, 9.1.0" />
 
+                <!-- Update AGP Row -->
+                <StackPanel Grid.Row="3" Grid.ColumnSpan="4" Orientation="Horizontal" Margin="0,2,0,8">
+                    <CheckBox x:Name="UpdateAgpCheck" Content="Automatically update AGP (Android Gradle Plugin) to compatible version"
+                              IsChecked="True" VerticalAlignment="Center" FontWeight="SemiBold"
+                              ToolTip="Updates AGP version in settings.gradle, build.gradle, or libs.versions.toml" />
+                </StackPanel>
+
                 <!-- Verification & Rules Row -->
-                <StackPanel Grid.Row="3" Grid.ColumnSpan="4" Orientation="Horizontal" Margin="0,4,0,2">
+                <StackPanel Grid.Row="4" Grid.ColumnSpan="4" Orientation="Horizontal" Margin="0,4,0,2">
                     <CheckBox x:Name="VerifyCheck" Content="Build after update, roll back on failure" VerticalAlignment="Center" />
                     <TextBlock Text="Task:" FontWeight="Medium" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="16,0,6,0" />
                     <TextBox x:Name="TaskBox" Width="130" Padding="8,4" />
@@ -267,9 +275,13 @@
                         <DataGridTextColumn Header="AGP" Binding="{Binding Agp}" Width="75" IsReadOnly="True"
                                             FontFamily="{StaticResource MonoFont}" FontWeight="Medium" />
 
-                        <!-- Target (editable) -->
-                        <DataGridTextColumn Header="Target (editable)" Binding="{Binding Target, UpdateSourceTrigger=LostFocus}"
-                                            Width="115" FontFamily="{StaticResource MonoFont}" FontWeight="SemiBold" />
+                        <!-- Target Gradle (editable) -->
+                        <DataGridTextColumn Header="Target Gradle" Binding="{Binding Target, UpdateSourceTrigger=LostFocus}"
+                                            Width="110" FontFamily="{StaticResource MonoFont}" FontWeight="SemiBold" />
+
+                        <!-- Target AGP (editable) -->
+                        <DataGridTextColumn Header="Target AGP" Binding="{Binding TargetAgp, UpdateSourceTrigger=LostFocus}"
+                                            Width="105" FontFamily="{StaticResource MonoFont}" FontWeight="SemiBold" />
 
                         <!-- Status Badge -->
                         <DataGridTemplateColumn Header="Status" Width="135" IsReadOnly="True">
