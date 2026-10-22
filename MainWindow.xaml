@@ -35,20 +35,6 @@
                 </StackPanel>
             </Border>
         </DataTemplate>
-
-        <DataTemplate x:Key="KeepChipTemplate">
-            <Border Background="{DynamicResource PrimaryLightBrush}" BorderBrush="{DynamicResource PrimaryBrush}"
-                    BorderThickness="1" CornerRadius="6" Padding="8,4" Margin="0,0,6,6">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="{Binding}" FontFamily="{DynamicResource MonoFont}" FontSize="10.5"
-                               Foreground="{DynamicResource PrimaryBrush}" VerticalAlignment="Center" />
-                    <Button Content="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="9"
-                            Style="{StaticResource GhostButtonStyle}" Foreground="{DynamicResource PrimaryBrush}"
-                            Width="16" Height="16" Padding="0" Margin="5,0,0,0" Tag="{Binding}"
-                            Click="RemoveKeepChip_Click" ToolTip="Stop keeping this version" />
-                </StackPanel>
-            </Border>
-        </DataTemplate>
     </Window.Resources>
 
     <Border x:Name="WindowRoot" Background="{DynamicResource WindowBgBrush}"
@@ -243,103 +229,45 @@
                                         ToolTip="Clear the custom path and use the auto-detected Gradle home" />
                             </Grid>
 
-                            <Grid Grid.Row="1" Margin="0,0,0,10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="12" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-
-                                <Border Background="{DynamicResource WindowBgAltBrush}" BorderBrush="{DynamicResource DividerBrush}"
-                                        BorderThickness="1" CornerRadius="8" Padding="12,10" VerticalAlignment="Top">
-                                    <StackPanel>
-                                        <TextBlock Text="Skip folders" FontWeight="Bold" FontSize="12"
-                                                   Foreground="{DynamicResource TextPrimaryBrush}" />
-                                        <TextBlock Text="Folder names ignored while scanning. Add a name, not a full path."
-                                                   FontSize="10.5" Foreground="{DynamicResource TextMutedBrush}"
-                                                   Margin="0,3,0,0" TextWrapping="Wrap" />
-                                        <ItemsControl x:Name="SkipChips" ItemTemplate="{StaticResource SkipChipTemplate}"
-                                                      Margin="0,8,0,2">
-                                            <ItemsControl.ItemsPanel>
-                                                <ItemsPanelTemplate>
-                                                    <WrapPanel />
-                                                </ItemsPanelTemplate>
-                                            </ItemsControl.ItemsPanel>
-                                        </ItemsControl>
-                                        <Grid Margin="0,2,0,0">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <Grid>
-                                                <TextBox x:Name="SkipInput" KeyDown="SkipInput_KeyDown"
-                                                         TextChanged="SkipInput_TextChanged"
-                                                         ToolTip="Type a folder name, then press Enter or Add" />
-                                                <TextBlock x:Name="SkipInputHint" Text="Folder name, e.g. .git"
-                                                           IsHitTestVisible="False" Margin="11,0,0,0"
-                                                           VerticalAlignment="Center" FontSize="11"
-                                                           Foreground="{DynamicResource TextMutedBrush}" />
-                                            </Grid>
-                                            <Button Grid.Column="1" Content="Add" Margin="6,0,0,0" Padding="12,6"
-                                                    Click="AddSkip_Click" />
-                                            <Button Grid.Column="2" Content="Reset" Margin="6,0,0,0" Padding="12,6"
-                                                    Click="ResetSkip_Click" ToolTip="Restore the default skip folders" />
+                            <Border Grid.Row="1" Background="{DynamicResource WindowBgAltBrush}"
+                                    BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1"
+                                    CornerRadius="8" Padding="12,10" Margin="0,0,0,10" VerticalAlignment="Top">
+                                <StackPanel>
+                                    <TextBlock Text="Skip folders" FontWeight="Bold" FontSize="12"
+                                               Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    <TextBlock Text="Folder names ignored while scanning. Add a name, not a full path."
+                                               FontSize="10.5" Foreground="{DynamicResource TextMutedBrush}"
+                                               Margin="0,3,0,0" TextWrapping="Wrap" />
+                                    <ItemsControl x:Name="SkipChips" ItemTemplate="{StaticResource SkipChipTemplate}"
+                                                  Margin="0,8,0,2">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                    </ItemsControl>
+                                    <Grid Margin="0,2,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid>
+                                            <TextBox x:Name="SkipInput" KeyDown="SkipInput_KeyDown"
+                                                     TextChanged="SkipInput_TextChanged"
+                                                     ToolTip="Type a folder name, then press Enter or Add" />
+                                            <TextBlock x:Name="SkipInputHint" Text="Folder name, e.g. .git"
+                                                       IsHitTestVisible="False" Margin="11,0,0,0"
+                                                       VerticalAlignment="Center" FontSize="11"
+                                                       Foreground="{DynamicResource TextMutedBrush}" />
                                         </Grid>
-                                    </StackPanel>
-                                </Border>
-
-                                <Border Grid.Column="2" Background="{DynamicResource WindowBgAltBrush}"
-                                        BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1"
-                                        CornerRadius="8" Padding="12,10" VerticalAlignment="Top">
-                                    <StackPanel>
-                                        <TextBlock Text="Always keep" FontWeight="Bold" FontSize="12"
-                                                   Foreground="{DynamicResource TextPrimaryBrush}" />
-                                        <TextBlock Text="Gradle versions listed here are never deleted by cleanup."
-                                                   FontSize="10.5" Foreground="{DynamicResource TextMutedBrush}"
-                                                   Margin="0,3,0,0" TextWrapping="Wrap" />
-                                        <ItemsControl x:Name="KeepChips" ItemTemplate="{StaticResource KeepChipTemplate}"
-                                                      Margin="0,8,0,2">
-                                            <ItemsControl.ItemsPanel>
-                                                <ItemsPanelTemplate>
-                                                    <WrapPanel />
-                                                </ItemsPanelTemplate>
-                                            </ItemsControl.ItemsPanel>
-                                        </ItemsControl>
-                                        <Grid Margin="0,2,0,0">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <ComboBox x:Name="KeepVersionPicker"
-                                                      AutomationProperties.Name="Version to keep"
-                                                      ToolTip="Pick an installed or known Gradle version" />
-                                            <Button Grid.Column="1" Content="Add selected" Margin="6,0,0,0" Padding="12,6"
-                                                    Click="AddKeepSelected_Click" />
-                                        </Grid>
-                                        <Grid Margin="0,6,0,0">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <Grid>
-                                                <TextBox x:Name="KeepInput" KeyDown="KeepInput_KeyDown"
-                                                         TextChanged="KeepInput_TextChanged"
-                                                         ToolTip="Type a Gradle version, then press Enter or Add custom" />
-                                                <TextBlock x:Name="KeepInputHint" Text="Type a version, e.g. 8.14.3"
-                                                           IsHitTestVisible="False" Margin="11,0,0,0"
-                                                           VerticalAlignment="Center" FontSize="11"
-                                                           Foreground="{DynamicResource TextMutedBrush}" />
-                                            </Grid>
-                                            <Button Grid.Column="1" Content="Add custom" Margin="6,0,0,0" Padding="12,6"
-                                                    Click="AddKeepCustom_Click" />
-                                        </Grid>
-                                        <TextBlock Text="Pick from the list, or type any version and add it."
-                                                   FontSize="10" Foreground="{DynamicResource TextMutedBrush}"
-                                                   Margin="0,4,0,0" TextWrapping="Wrap" />
-                                    </StackPanel>
-                                </Border>
-                            </Grid>
+                                        <Button Grid.Column="1" Content="Add" Margin="6,0,0,0" Padding="12,6"
+                                                Click="AddSkip_Click" />
+                                        <Button Grid.Column="2" Content="Reset" Margin="6,0,0,0" Padding="12,6"
+                                                Click="ResetSkip_Click" ToolTip="Restore the default skip folders" />
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
 
                             <Grid Grid.Row="2" Margin="0,0,0,10">
                                 <Grid.ColumnDefinitions>

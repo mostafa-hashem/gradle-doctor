@@ -40,7 +40,7 @@
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock Text="Clean old Gradle versions" FontSize="16" FontWeight="Bold"
                                    Foreground="{DynamicResource TextPrimaryBrush}" />
-                        <TextBlock Text="Unreferenced distributions and caches. Select what you no longer need."
+                        <TextBlock Text="Versions used by scanned projects are never listed. Select what you no longer need."
                                    FontSize="12" Margin="0,2,0,0" Foreground="{DynamicResource TextSecondaryBrush}" />
                     </StackPanel>
 

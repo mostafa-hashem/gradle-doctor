@@ -22,7 +22,6 @@ public partial class MainWindow : Window
 
     readonly AppSettings _s = AppSettings.Load();
     readonly ObservableCollection<string> _skipFolders = new();
-    readonly ObservableCollection<string> _keepVersions = new();
     List<ProjectInfo> _projects = new();
     List<GradleRelease> _remoteVersions = new();
     ICollectionView? _view;
@@ -53,7 +52,6 @@ public partial class MainWindow : Window
         if (Directory.Exists(_s.LastFolder)) PathBox.Text = _s.LastFolder;
         GradleHomeBox.Text = _s.GradleHome;
         SkipChips.ItemsSource = _skipFolders;
-        KeepChips.ItemsSource = _keepVersions;
         LoadTokenEditors();
         VerifyCheck.IsChecked = _s.VerifyBuild;
         UpdateAgpCheck.IsChecked = _s.UpdateAgp;
@@ -88,7 +86,7 @@ public partial class MainWindow : Window
 
     void UpdateSettingsHeight()
     {
-        SettingsScroll.MaxHeight = Math.Clamp(ActualHeight - 600, 180, 320);
+        SettingsScroll.MaxHeight = Math.Clamp(ActualHeight - 540, 180, 360);
     }
 
     void SettingsExpander_Expanded(object sender, RoutedEventArgs e)
@@ -222,19 +220,15 @@ public partial class MainWindow : Window
             _s.Save();
         }
         foreach (var token in skip) AddToken(_skipFolders, token, true);
-        foreach (var version in SplitTokens(_s.KeepVersions)) AddToken(_keepVersions, version, true);
     }
 
     HashSet<string> SkipSet() => _skipFolders.ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-    HashSet<string> KeepSet() => _keepVersions.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
     void SaveSettings()
     {
         _s.LastFolder = PathBox.Text;
         _s.GradleHome = GradleHomeBox.Text.Trim();
         _s.SkipFolders = string.Join(",", _skipFolders);
-        _s.KeepVersions = string.Join(",", _keepVersions);
         _s.VerifyBuild = VerifyCheck.IsChecked == true;
         _s.UpdateAgp = UpdateAgpCheck.IsChecked == true;
         _s.VerifyTask = VerifyTask;
@@ -265,29 +259,6 @@ public partial class MainWindow : Window
             ToastService.Show("Use folder names only (for example .git), not full paths.", ToastKind.Warning);
     }
 
-    void AddKeepVersion(string text)
-    {
-        var added = 0;
-        var invalid = false;
-        foreach (var token in SplitTokens(text))
-        {
-            if (!VersionFormat.IsMatch(token))
-            {
-                invalid = true;
-                continue;
-            }
-            if (AddToken(_keepVersions, token, true)) added++;
-        }
-
-        if (added > 0)
-        {
-            SaveSettings();
-            RefreshKeepVersionOptions(GradleCleaner.InstalledVersions(Home));
-        }
-        if (invalid)
-            ToastService.Show("Use a Gradle version like 8.14.3.", ToastKind.Warning);
-    }
-
     void SkipInput_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key is not (Key.Enter or Key.OemComma or Key.OemSemicolon)) return;
@@ -299,9 +270,6 @@ public partial class MainWindow : Window
 
     void SkipInput_TextChanged(object sender, TextChangedEventArgs e) =>
         SkipInputHint.Visibility = string.IsNullOrEmpty(SkipInput.Text) ? Visibility.Visible : Visibility.Collapsed;
-
-    void KeepInput_TextChanged(object sender, TextChangedEventArgs e) =>
-        KeepInputHint.Visibility = string.IsNullOrEmpty(KeepInput.Text) ? Visibility.Visible : Visibility.Collapsed;
 
     void RemoveSkipChip_Click(object sender, RoutedEventArgs e)
     {
@@ -317,44 +285,6 @@ public partial class MainWindow : Window
             AddToken(_skipFolders, token, true);
         SaveSettings();
         ToastService.Show("Skip folders restored to defaults.", ToastKind.Info);
-    }
-
-    void KeepInput_KeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.Key != Key.Enter) return;
-        AddKeepVersion(KeepInput.Text);
-        KeepInput.Clear();
-        e.Handled = true;
-    }
-
-    void AddKeepSelected_Click(object sender, RoutedEventArgs e)
-    {
-        var version = SelectedVersion(KeepVersionPicker);
-        if (string.IsNullOrWhiteSpace(version))
-        {
-            ToastService.Show("Choose a version first.", ToastKind.Warning);
-            return;
-        }
-        AddKeepVersion(version);
-    }
-
-    void AddKeepCustom_Click(object sender, RoutedEventArgs e)
-    {
-        if (string.IsNullOrWhiteSpace(KeepInput.Text))
-        {
-            ToastService.Show("Type a Gradle version first.", ToastKind.Warning);
-            return;
-        }
-        AddKeepVersion(KeepInput.Text);
-        KeepInput.Clear();
-    }
-
-    void RemoveKeepChip_Click(object sender, RoutedEventArgs e)
-    {
-        if ((sender as FrameworkElement)?.Tag is not string version) return;
-        _keepVersions.Remove(version);
-        SaveSettings();
-        RefreshKeepVersionOptions(GradleCleaner.InstalledVersions(Home));
     }
 
     // ---------- UI state ----------
@@ -564,23 +494,7 @@ public partial class MainWindow : Window
         TargetBox.Text = target;
         if (!string.IsNullOrWhiteSpace(target))
             SelectVersion(VersionPicker, target);
-        RefreshKeepVersionOptions(installed);
         _loadingUi = false;
-    }
-
-    void RefreshKeepVersionOptions(IEnumerable<string> installed)
-    {
-        var options = installed
-            .Concat(_keepVersions)
-            .Concat(_projects.Select(p => p.CurrentGradle).Where(v => v != "?"))
-            .Concat(_remoteVersions.Select(v => v.Version))
-            .Where(v => VersionFormat.IsMatch(v))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderByDescending(v => v, Comparer<string>.Create(ProjectScanner.CompareVersions))
-            .ToList();
-        KeepVersionPicker.ItemsSource = options;
-        KeepVersionPicker.SelectedItem = options.FirstOrDefault(v =>
-            !_keepVersions.Contains(v, StringComparer.OrdinalIgnoreCase));
     }
 
     static string? SelectedVersion(ComboBox box) => box.SelectedItem switch
@@ -865,7 +779,7 @@ public partial class MainWindow : Window
         foreach (var p in rows.Where(p => p.Warning.Length > 0))
             Log($"   WARNING {p.Name}: {p.Warning}");
 
-        var keep = KeepSet();
+        var keep = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var p in _projects)
             keep.Add(p.Selected && VersionFormat.IsMatch(p.Target) ? p.Target : p.CurrentGradle);
         keep.Remove("?");
@@ -1117,7 +1031,7 @@ public partial class MainWindow : Window
 
     async void Clean_Click(object sender, RoutedEventArgs e)
     {
-        var keep = KeepSet();
+        var keep = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var p in _projects) keep.Add(p.CurrentGradle);
         keep.Remove("?");
 

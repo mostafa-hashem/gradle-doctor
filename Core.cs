@@ -80,7 +80,6 @@ public class AppSettings
     public string LastFolder { get; set; } = "";
     public string GradleHome { get; set; } = "";          // empty = auto-detect
     public string SkipFolders { get; set; } = DefaultSkipFolders;
-    public string KeepVersions { get; set; } = "";        // extra versions never deleted
     public string DefaultGradleVersion { get; set; } = ""; // empty = latest stable
     public string ThemeMode { get; set; } = "Light";       // Light, Dark, System
     public int SettingsVersion { get; set; }
