@@ -68,9 +68,12 @@ public static class Format
 
 public class AppSettings
 {
+    public static readonly string DefaultSkipFolders =
+        "node_modules,.git,.dart_tool,build,.gradle,.idea,Pods,.pub-cache,ephemeral,.plugin_symlinks,plugin_symlinks,windows,linux,macos,ios,.cxx,.externalNativeBuild";
+
     public string LastFolder { get; set; } = "";
     public string GradleHome { get; set; } = "";          // empty = auto-detect
-    public string SkipFolders { get; set; } = "node_modules,.git,.dart_tool,build,.gradle,.idea,Pods,.pub-cache";
+    public string SkipFolders { get; set; } = DefaultSkipFolders;
     public string KeepVersions { get; set; } = "";        // extra versions never deleted
     public bool VerifyBuild { get; set; } = false;
     public string VerifyTask { get; set; } = "assembleDebug";
@@ -169,30 +172,82 @@ public static class ProjectScanner
     static readonly Regex AgpClasspathRx = new(
         @"com\.android\.tools\.build:gradle:(?<v>\d+(?:\.\d+)+)", RegexOptions.Compiled);
 
+    public static readonly HashSet<string> DefaultSkipSet = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "node_modules", ".git", ".github", ".dart_tool", "build", ".gradle", ".idea",
+        "Pods", ".pub-cache", "ephemeral", ".plugin_symlinks", "plugin_symlinks",
+        ".symlinks", "symlinks", "windows", "linux", "macos", "ios", "web",
+        ".cxx", ".externalNativeBuild", "bin", "obj", ".vscode", "DerivedData"
+    };
+
+    static bool ContainsForbiddenSegment(string path, ISet<string> skip)
+    {
+        var parts = path.Split(new[] { System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar }, StringSplitOptions.RemoveEmptyEntries);
+        foreach (var p in parts)
+        {
+            if (DefaultSkipSet.Contains(p) || skip.Contains(p)) return true;
+        }
+        return false;
+    }
+
     public static List<ProjectInfo> Scan(string root, ISet<string> skip)
     {
         var result = new List<ProjectInfo>();
         var stack = new Stack<string>();
         stack.Push(root);
 
+        var allSkip = new HashSet<string>(skip, StringComparer.OrdinalIgnoreCase);
+        foreach (var s in DefaultSkipSet) allSkip.Add(s);
+
         while (stack.Count > 0)
         {
             var dir = stack.Pop();
-            var props = System.IO.Path.Combine(dir, "gradle", "wrapper", "gradle-wrapper.properties");
-            if (File.Exists(props)) result.Add(Read(dir, props));
 
+            // 1. Skip if dir path contains any forbidden segment (e.g. ephemeral, .plugin_symlinks)
+            if (ContainsForbiddenSegment(dir, allSkip)) continue;
+
+            // 2. Check if this folder is a Flutter App Root
+            var pubspec = System.IO.Path.Combine(dir, "pubspec.yaml");
+            if (File.Exists(pubspec))
+            {
+                var androidDir = System.IO.Path.Combine(dir, "android");
+                var props = System.IO.Path.Combine(androidDir, "gradle", "wrapper", "gradle-wrapper.properties");
+                if (File.Exists(props))
+                {
+                    result.Add(Read(androidDir, props, isFlutter: true, flutterAppName: System.IO.Path.GetFileName(dir)));
+                }
+                // Do NOT recurse into Flutter app's internal folders (windows, linux, ephemeral, etc.)
+                continue;
+            }
+
+            // 3. Check if this folder is a standalone Android/Gradle project
+            var wrapperProps = System.IO.Path.Combine(dir, "gradle", "wrapper", "gradle-wrapper.properties");
+            if (File.Exists(wrapperProps))
+            {
+                result.Add(Read(dir, wrapperProps, isFlutter: false));
+                // Do not recurse into subdirectories of an already identified Gradle project
+                continue;
+            }
+
+            // 4. Container directory: Recurse into child directories
             try
             {
                 foreach (var sub in Directory.EnumerateDirectories(dir))
                 {
                     var name = System.IO.Path.GetFileName(sub);
-                    if (skip.Contains(name)) continue;
+                    if (allSkip.Contains(name)) continue;
+
+                    // Skip Windows directory junctions, symlinks, and reparse points
+                    var di = new DirectoryInfo(sub);
+                    if ((di.Attributes & FileAttributes.ReparsePoint) != 0) continue;
+
                     stack.Push(sub);
                 }
             }
             catch { /* access denied etc. */ }
         }
-        return result.OrderBy(p => p.Path, StringComparer.OrdinalIgnoreCase).ToList();
+
+        return result.OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase).ToList();
     }
 
     public static string ReadVersion(string propsFile)
@@ -206,15 +261,23 @@ public static class ProjectScanner
         return "?";
     }
 
-    static ProjectInfo Read(string dir, string props)
+    static ProjectInfo Read(string dir, string props, bool isFlutter = false, string? flutterAppName = null)
     {
         var info = new ProjectInfo { Path = dir, PropsFile = props };
-        var parent = Directory.GetParent(dir);
-        bool flutter = parent != null
-            && string.Equals(System.IO.Path.GetFileName(dir), "android", StringComparison.OrdinalIgnoreCase)
-            && File.Exists(System.IO.Path.Combine(parent.FullName, "pubspec.yaml"));
-        info.Type = flutter ? "Flutter" : "Android";
-        info.Name = flutter ? parent!.Name : System.IO.Path.GetFileName(dir);
+        if (isFlutter)
+        {
+            info.Type = "Flutter";
+            info.Name = flutterAppName ?? Directory.GetParent(dir)?.Name ?? System.IO.Path.GetFileName(dir);
+        }
+        else
+        {
+            var parent = Directory.GetParent(dir);
+            bool flutterDetected = parent != null
+                && string.Equals(System.IO.Path.GetFileName(dir), "android", StringComparison.OrdinalIgnoreCase)
+                && File.Exists(System.IO.Path.Combine(parent.FullName, "pubspec.yaml"));
+            info.Type = flutterDetected ? "Flutter" : "Android";
+            info.Name = flutterDetected ? parent!.Name : System.IO.Path.GetFileName(dir);
+        }
         info.CurrentGradle = ReadVersion(props);
 
         foreach (var f in new[] { "settings.gradle", "settings.gradle.kts", "build.gradle", "build.gradle.kts" })
@@ -232,6 +295,7 @@ public static class ProjectScanner
         }
         return info;
     }
+
 
     static string BakPath(ProjectInfo p) => p.PropsFile + ".gradledoctor.bak";
 

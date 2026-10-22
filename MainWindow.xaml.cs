@@ -19,7 +19,9 @@ public partial class MainWindow : Window
         InitializeComponent();
         if (Directory.Exists(_s.LastFolder)) PathBox.Text = _s.LastFolder;
         GradleHomeBox.Text = _s.GradleHome;
-        SkipBox.Text = _s.SkipFolders;
+        SkipBox.Text = string.IsNullOrWhiteSpace(_s.SkipFolders) || !_s.SkipFolders.Contains("ephemeral")
+            ? AppSettings.DefaultSkipFolders
+            : _s.SkipFolders;
         KeepBox.Text = _s.KeepVersions;
         VerifyCheck.IsChecked = _s.VerifyBuild;
         TaskBox.Text = _s.VerifyTask;
@@ -47,9 +49,13 @@ public partial class MainWindow : Window
         }
     }
 
-    HashSet<string> SkipSet() =>
-        SkipBox.Text.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+    HashSet<string> SkipSet()
+    {
+        var set = SkipBox.Text.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var s in ProjectScanner.DefaultSkipSet) set.Add(s);
+        return set;
+    }
 
     HashSet<string> KeepSet() =>
         KeepBox.Text.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
