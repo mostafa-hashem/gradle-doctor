@@ -21,6 +21,36 @@
                             UseAeroCaptionButtons="False" />
     </shell:WindowChrome.WindowChrome>
 
+    <Window.Resources>
+        <DataTemplate x:Key="SkipChipTemplate">
+            <Border Background="{DynamicResource BadgeBgBrush}" BorderBrush="{DynamicResource DividerBrush}"
+                    BorderThickness="1" CornerRadius="6" Padding="8,4" Margin="0,0,6,6">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding}" FontSize="10.5" Foreground="{DynamicResource TextPrimaryBrush}"
+                               VerticalAlignment="Center" />
+                    <Button Content="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="9"
+                            Style="{StaticResource GhostButtonStyle}" Foreground="{DynamicResource TextMutedBrush}"
+                            Width="16" Height="16" Padding="0" Margin="5,0,0,0" Tag="{Binding}"
+                            Click="RemoveSkipChip_Click" ToolTip="Remove folder" />
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <DataTemplate x:Key="KeepChipTemplate">
+            <Border Background="{DynamicResource PrimaryLightBrush}" BorderBrush="{DynamicResource PrimaryBrush}"
+                    BorderThickness="1" CornerRadius="6" Padding="8,4" Margin="0,0,6,6">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding}" FontFamily="{DynamicResource MonoFont}" FontSize="10.5"
+                               Foreground="{DynamicResource PrimaryBrush}" VerticalAlignment="Center" />
+                    <Button Content="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="9"
+                            Style="{StaticResource GhostButtonStyle}" Foreground="{DynamicResource PrimaryBrush}"
+                            Width="16" Height="16" Padding="0" Margin="5,0,0,0" Tag="{Binding}"
+                            Click="RemoveKeepChip_Click" ToolTip="Stop keeping this version" />
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+    </Window.Resources>
+
     <Border x:Name="WindowRoot" Background="{DynamicResource WindowBgBrush}"
             BorderBrush="{DynamicResource WindowBorderBrush}" BorderThickness="1">
         <Grid>
@@ -164,7 +194,8 @@
                 </Border>
 
                 <!-- Settings -->
-                <Expander Grid.Row="2" Margin="0,0,0,10">
+                <Expander x:Name="SettingsExpander" Grid.Row="2" Margin="0,0,0,10"
+                          Expanded="SettingsExpander_Expanded" Collapsed="SettingsExpander_Collapsed">
                     <Expander.Header>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <Path Data="M 3 6 L 15 6 M 3 12 L 21 12 M 3 18 L 9 18 M 15 4 L 15 8 M 9 10 L 9 14 M 18 16 L 18 20"
@@ -179,78 +210,190 @@
                         </StackPanel>
                     </Expander.Header>
 
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
+                    <ScrollViewer x:Name="SettingsScroll" MaxHeight="300" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <Grid Margin="0,10,0,0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Gradle home" FontWeight="Medium"
-                                   Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,10,8" />
-                        <TextBox x:Name="GradleHomeBox" Grid.Row="0" Grid.Column="1" Margin="0,0,0,8"
-                                 ToolTip="Empty = auto-detect (GRADLE_USER_HOME or %USERPROFILE%\.gradle)" />
-                        <Button Grid.Row="0" Grid.Column="2" Content="Browse..." Margin="8,0,0,8" Padding="12,6" Click="BrowseHome_Click" />
-                        <Button Grid.Row="0" Grid.Column="3" Content="Auto" Margin="8,0,0,8" Padding="12,6" Click="ResetHome_Click" />
+                            <Grid Grid.Row="0" Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Gradle home" FontWeight="Medium"
+                                           Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Top"
+                                           Margin="0,7,10,0" />
+                                <StackPanel Grid.Column="1">
+                                    <TextBox x:Name="GradleHomeBox"
+                                             ToolTip="Empty = auto-detect (GRADLE_USER_HOME or %USERPROFILE%\.gradle)" />
+                                    <TextBlock x:Name="GradleHomeHint" FontSize="10.5" FontFamily="{DynamicResource MonoFont}"
+                                               Foreground="{DynamicResource TextMutedBrush}" Margin="2,4,0,0"
+                                               TextWrapping="Wrap" />
+                                </StackPanel>
+                                <Button Grid.Column="2" Content="Browse..." Margin="8,0,0,0" Padding="12,6"
+                                        VerticalAlignment="Top" Click="BrowseHome_Click" />
+                                <Button Grid.Column="3" Content="Auto" Margin="8,0,0,0" Padding="12,6"
+                                        VerticalAlignment="Top" Click="ResetHome_Click"
+                                        ToolTip="Clear the custom path and use the auto-detected Gradle home" />
+                            </Grid>
 
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Skip folders" FontWeight="Medium"
-                                   Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,10,8" />
-                        <TextBox x:Name="SkipBox" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,0,0,8"
-                                 ToolTip="Comma-separated folder names ignored during project scanning" />
+                            <Grid Grid.Row="1" Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
 
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Always keep" FontWeight="Medium"
-                                   Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,10,8" />
-                        <TextBox x:Name="KeepBox" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,0,0,8"
-                                 ToolTip="Comma-separated Gradle versions that cleanup must never delete" />
+                                <Border Background="{DynamicResource WindowBgAltBrush}" BorderBrush="{DynamicResource DividerBrush}"
+                                        BorderThickness="1" CornerRadius="8" Padding="12,10" VerticalAlignment="Top">
+                                    <StackPanel>
+                                        <TextBlock Text="Skip folders" FontWeight="Bold" FontSize="12"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}" />
+                                        <TextBlock Text="Folder names ignored while scanning. Add a name, not a full path."
+                                                   FontSize="10.5" Foreground="{DynamicResource TextMutedBrush}"
+                                                   Margin="0,3,0,0" TextWrapping="Wrap" />
+                                        <ItemsControl x:Name="SkipChips" ItemTemplate="{StaticResource SkipChipTemplate}"
+                                                      Margin="0,8,0,2">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <WrapPanel />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                        </ItemsControl>
+                                        <Grid Margin="0,2,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid>
+                                                <TextBox x:Name="SkipInput" KeyDown="SkipInput_KeyDown"
+                                                         TextChanged="SkipInput_TextChanged"
+                                                         ToolTip="Type a folder name, then press Enter or Add" />
+                                                <TextBlock x:Name="SkipInputHint" Text="Folder name, e.g. .git"
+                                                           IsHitTestVisible="False" Margin="11,0,0,0"
+                                                           VerticalAlignment="Center" FontSize="11"
+                                                           Foreground="{DynamicResource TextMutedBrush}" />
+                                            </Grid>
+                                            <Button Grid.Column="1" Content="Add" Margin="6,0,0,0" Padding="12,6"
+                                                    Click="AddSkip_Click" />
+                                            <Button Grid.Column="2" Content="Reset" Margin="6,0,0,0" Padding="12,6"
+                                                    Click="ResetSkip_Click" ToolTip="Restore the default skip folders" />
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
 
-                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Default target" FontWeight="Medium"
-                                   Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,10,8" />
-                        <Grid Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,0,0,8">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="180" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <ComboBox x:Name="DefaultTargetBox" Grid.Column="0" ToolTip="Default Gradle version used for new scans"
-                                      AutomationProperties.Name="Default Gradle version"
-                                      ItemTemplate="{StaticResource VersionOptionTemplate}" />
-                            <Button x:Name="UseDefaultBtn" Grid.Column="1" Content="Use as target for selected"
-                                    Margin="8,0,0,0" Padding="12,6" Click="UseDefault_Click" />
-                            <TextBlock Grid.Column="2" Text="The latest stable release is used when no default is chosen."
-                                       FontSize="11" Foreground="{DynamicResource TextMutedBrush}" Margin="12,0,0,0"
-                                       VerticalAlignment="Center" />
+                                <Border Grid.Column="2" Background="{DynamicResource WindowBgAltBrush}"
+                                        BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1"
+                                        CornerRadius="8" Padding="12,10" VerticalAlignment="Top">
+                                    <StackPanel>
+                                        <TextBlock Text="Always keep" FontWeight="Bold" FontSize="12"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}" />
+                                        <TextBlock Text="Gradle versions listed here are never deleted by cleanup."
+                                                   FontSize="10.5" Foreground="{DynamicResource TextMutedBrush}"
+                                                   Margin="0,3,0,0" TextWrapping="Wrap" />
+                                        <ItemsControl x:Name="KeepChips" ItemTemplate="{StaticResource KeepChipTemplate}"
+                                                      Margin="0,8,0,2">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <WrapPanel />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                        </ItemsControl>
+                                        <Grid Margin="0,2,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <ComboBox x:Name="KeepVersionPicker"
+                                                      AutomationProperties.Name="Version to keep"
+                                                      ToolTip="Pick an installed or known Gradle version" />
+                                            <Button Grid.Column="1" Content="Add selected" Margin="6,0,0,0" Padding="12,6"
+                                                    Click="AddKeepSelected_Click" />
+                                        </Grid>
+                                        <Grid Margin="0,6,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid>
+                                                <TextBox x:Name="KeepInput" KeyDown="KeepInput_KeyDown"
+                                                         TextChanged="KeepInput_TextChanged"
+                                                         ToolTip="Type a Gradle version, then press Enter or Add custom" />
+                                                <TextBlock x:Name="KeepInputHint" Text="Type a version, e.g. 8.14.3"
+                                                           IsHitTestVisible="False" Margin="11,0,0,0"
+                                                           VerticalAlignment="Center" FontSize="11"
+                                                           Foreground="{DynamicResource TextMutedBrush}" />
+                                            </Grid>
+                                            <Button Grid.Column="1" Content="Add custom" Margin="6,0,0,0" Padding="12,6"
+                                                    Click="AddKeepCustom_Click" />
+                                        </Grid>
+                                        <TextBlock Text="Pick from the list, or type any version and add it."
+                                                   FontSize="10" Foreground="{DynamicResource TextMutedBrush}"
+                                                   Margin="0,4,0,0" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+
+                            <Grid Grid.Row="2" Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="180" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Default target" FontWeight="Medium"
+                                           Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"
+                                           Margin="0,0,10,0" />
+                                <ComboBox x:Name="DefaultTargetBox" Grid.Column="1"
+                                          ToolTip="Default Gradle version used for new scans"
+                                          AutomationProperties.Name="Default Gradle version"
+                                          ItemTemplate="{StaticResource VersionOptionTemplate}" />
+                                <Button x:Name="UseDefaultBtn" Grid.Column="2" Content="Use as target for selected"
+                                        Margin="8,0,0,0" Padding="12,6" Click="UseDefault_Click" />
+                                <TextBlock Grid.Column="3" Text="The latest stable release is used when no default is chosen."
+                                           FontSize="11" Foreground="{DynamicResource TextMutedBrush}"
+                                           Margin="12,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap" />
+                            </Grid>
+
+                            <WrapPanel Grid.Row="3">
+                                <CheckBox x:Name="UpdateAgpCheck" Content="Auto-update AGP to newest compatible"
+                                          IsChecked="True" Margin="0,0,22,8"
+                                          ToolTip="Detects AGP in settings/build files and libs.versions.toml, then suggests the newest compatible version" />
+                                <CheckBox x:Name="VerifyCheck" Content="Build after update and roll back on failure"
+                                          Margin="0,0,22,8" />
+                                <StackPanel Orientation="Horizontal" Margin="0,0,18,8">
+                                    <TextBlock Text="Task" FontWeight="Medium"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"
+                                               VerticalAlignment="Center" Margin="0,0,7,0" />
+                                    <TextBox x:Name="TaskBox" Width="132" Padding="8,5" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,18,8">
+                                    <TextBlock Text="Timeout" FontWeight="Medium"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"
+                                               VerticalAlignment="Center" Margin="0,0,7,0" />
+                                    <TextBox x:Name="TimeoutBox" Width="56" Padding="8,5"
+                                             HorizontalContentAlignment="Center" />
+                                    <TextBlock Text="min" Foreground="{DynamicResource TextMutedBrush}"
+                                               VerticalAlignment="Center" Margin="4,0,0,0" />
+                                </StackPanel>
+                                <Button Content="Edit compatibility rules" Margin="0,0,0,8" Padding="12,6"
+                                        Click="EditCompat_Click" />
+                            </WrapPanel>
                         </Grid>
-
-                        <StackPanel Grid.Row="4" Grid.ColumnSpan="4" Orientation="Horizontal" Margin="0,4,0,0">
-                            <CheckBox x:Name="UpdateAgpCheck" Content="Auto-update AGP to newest compatible"
-                                      IsChecked="True" VerticalAlignment="Center"
-                                      ToolTip="Detects AGP in settings/build files and libs.versions.toml, then suggests the newest compatible version" />
-                            <CheckBox x:Name="VerifyCheck" Content="Build after update and roll back on failure"
-                                      VerticalAlignment="Center" Margin="22,0,0,0" />
-                            <TextBlock Text="Task" FontWeight="Medium" Foreground="{DynamicResource TextSecondaryBrush}"
-                                       VerticalAlignment="Center" Margin="22,0,7,0" />
-                            <TextBox x:Name="TaskBox" Width="132" Padding="8,5" />
-                            <TextBlock Text="Timeout" FontWeight="Medium" Foreground="{DynamicResource TextSecondaryBrush}"
-                                       VerticalAlignment="Center" Margin="14,0,7,0" />
-                            <TextBox x:Name="TimeoutBox" Width="56" Padding="8,5" HorizontalContentAlignment="Center" />
-                            <TextBlock Text="min" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" Margin="4,0,0,0" />
-                            <Button Content="Edit compatibility rules" Margin="18,0,0,0" Padding="12,6" Click="EditCompat_Click" />
-                        </StackPanel>
-                    </Grid>
+                    </ScrollViewer>
                 </Expander>
 
                 <!-- Toolbar -->
-                <Border Grid.Row="3" Style="{StaticResource CardStyle}" Padding="12,9" Margin="0,0,0,10">
+                <Border Grid.Row="3" Style="{StaticResource CardStyle}" Padding="12,9,12,1" Margin="0,0,0,10">
                     <WrapPanel VerticalAlignment="Center">
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,14,8">
                             <TextBlock Text="Target Gradle" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"
                                        VerticalAlignment="Center" Margin="0,0,8,0" />
                             <TextBox x:Name="TargetBox" Width="104" Padding="8,6" FontFamily="{DynamicResource MonoFont}"
@@ -266,17 +409,22 @@
                                     ToolTip="Download the target distribution into the selected Gradle home" />
                         </StackPanel>
 
-                        <Rectangle Width="1" Height="24" Fill="{DynamicResource DividerBrush}" Margin="0,0,12,0" VerticalAlignment="Center" />
-                        <Button x:Name="SelAllBtn" Content="Select all" Margin="0,0,6,0" Click="SelectAll_Click" />
-                        <Button x:Name="SelNoneBtn" Content="Select none" Margin="0,0,6,0" Click="SelectNone_Click" />
-                        <Button x:Name="SetTargetBtn" Content="Set target" Margin="0,0,12,0" Click="SetTarget_Click" />
-                        <Rectangle Width="1" Height="24" Fill="{DynamicResource DividerBrush}" Margin="0,0,12,0" VerticalAlignment="Center" />
-                        <Button x:Name="DryBtn" Content="Dry run" Margin="0,0,6,0" Padding="16,7" Click="DryRun_Click" />
-                        <Button x:Name="ApplyBtn" Content="Apply selected" Margin="0,0,12,0" Padding="16,7"
-                                Style="{StaticResource SuccessButtonStyle}" Click="Apply_Click" />
-                        <Rectangle Width="1" Height="24" Fill="{DynamicResource DividerBrush}" Margin="0,0,12,0" VerticalAlignment="Center" />
-                        <Button x:Name="CleanBtn" Content="Clean old versions..." Margin="0,0,6,0" Click="Clean_Click" />
-                        <Button x:Name="StopBtn" Content="Stop daemons" Padding="14,7" Style="{StaticResource DangerButtonStyle}" Click="Stop_Click" />
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,14,8">
+                            <Button x:Name="SelAllBtn" Content="Select all" Margin="0,0,6,0" Click="SelectAll_Click" />
+                            <Button x:Name="SelNoneBtn" Content="Select none" Margin="0,0,6,0" Click="SelectNone_Click" />
+                            <Button x:Name="SetTargetBtn" Content="Set target" Click="SetTarget_Click" />
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,14,8">
+                            <Button x:Name="DryBtn" Content="Dry run" Margin="0,0,6,0" Padding="16,7" Click="DryRun_Click" />
+                            <Button x:Name="ApplyBtn" Content="Apply selected" Padding="16,7"
+                                    Style="{StaticResource SuccessButtonStyle}" Click="Apply_Click" />
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,8">
+                            <Button x:Name="CleanBtn" Content="Clean old versions..." Margin="0,0,6,0" Click="Clean_Click" />
+                            <Button x:Name="StopBtn" Content="Stop daemons" Padding="14,7" Style="{StaticResource DangerButtonStyle}" Click="Stop_Click" />
+                        </StackPanel>
                     </WrapPanel>
                 </Border>
 
@@ -490,7 +638,7 @@
 
                             <Border DockPanel.Dock="Bottom" Background="{DynamicResource CardBgBrush}"
                                     BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,1,0,0"
-                                    Padding="10,8" Visibility="{Binding ElementName=DetailContent, Path=Visibility}">
+                                    Padding="14,8" Visibility="{Binding ElementName=DetailContent, Path=Visibility}">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -557,28 +705,32 @@
                                                 <RowDefinition Height="Auto" />
                                                 <RowDefinition Height="Auto" />
                                                 <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
                                             </Grid.RowDefinitions>
 
                                             <TextBlock Text="CURRENT GRADLE" FontSize="9.5" FontWeight="Bold"
-                                                       Foreground="{DynamicResource TextMutedBrush}" />
-                                            <TextBlock x:Name="DetailGradle" Grid.Row="1" FontFamily="{DynamicResource MonoFont}"
-                                                       FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
-                                            <TextBlock Grid.Row="2" Text="Current AGP" FontSize="10"
-                                                       Foreground="{DynamicResource TextMutedBrush}" Margin="0,8,0,0" />
-                                            <TextBlock x:Name="DetailAgp" Grid.Row="2" FontFamily="{DynamicResource MonoFont}"
-                                                       FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"
-                                                       HorizontalAlignment="Right" />
-
+                                                       Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,8,0" />
                                             <TextBlock Grid.Column="1" Text="TARGET GRADLE" FontSize="9.5" FontWeight="Bold"
                                                        Foreground="{DynamicResource TextMutedBrush}" />
+
+                                            <TextBlock x:Name="DetailGradle" Grid.Row="1" FontFamily="{DynamicResource MonoFont}"
+                                                       FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"
+                                                       Margin="0,0,8,0" />
                                             <TextBlock x:Name="DetailTargetGradle" Grid.Row="1" Grid.Column="1"
                                                        FontFamily="{DynamicResource MonoFont}" FontSize="13" FontWeight="SemiBold"
                                                        Foreground="{DynamicResource PrimaryBrush}" />
+
+                                            <TextBlock Grid.Row="2" Text="Current AGP" FontSize="10"
+                                                       Foreground="{DynamicResource TextMutedBrush}" Margin="0,9,8,0" />
                                             <TextBlock Grid.Row="2" Grid.Column="1" Text="Target AGP" FontSize="10"
-                                                       Foreground="{DynamicResource TextMutedBrush}" Margin="0,8,0,0" />
-                                            <TextBlock x:Name="DetailTargetAgp" Grid.Row="2" Grid.Column="1"
+                                                       Foreground="{DynamicResource TextMutedBrush}" Margin="0,9,0,0" />
+
+                                            <TextBlock x:Name="DetailAgp" Grid.Row="3" FontFamily="{DynamicResource MonoFont}"
+                                                       FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"
+                                                       Margin="0,0,8,0" />
+                                            <TextBlock x:Name="DetailTargetAgp" Grid.Row="3" Grid.Column="1"
                                                        FontFamily="{DynamicResource MonoFont}" FontSize="12" FontWeight="SemiBold"
-                                                       Foreground="{DynamicResource PrimaryBrush}" HorizontalAlignment="Right" />
+                                                       Foreground="{DynamicResource PrimaryBrush}" />
                                         </Grid>
 
                                         <Border Background="{DynamicResource WindowBgAltBrush}" CornerRadius="7" Padding="9,7" Margin="0,10,0,0">
@@ -633,15 +785,15 @@
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                    <Button x:Name="TerminalToggleBtn" Content="&#xE70E;" FontFamily="Segoe MDL2 Assets"
-                                            Style="{StaticResource IconButtonStyle}" Width="26" Height="24" Margin="0,0,2,0"
+                                    <Button x:Name="TerminalToggleBtn" Content="&#xE70D;" FontFamily="Segoe MDL2 Assets"
+                                            Style="{StaticResource IconButtonStyle}" Width="26" Height="24" Margin="0,0,6,0"
                                             AutomationProperties.Name="Toggle log" Click="TerminalToggle_Click" ToolTip="Collapse log" />
                                     <Button Content="Copy" Click="CopyLog_Click" Style="{StaticResource GhostButtonStyle}"
-                                            Foreground="{DynamicResource TerminalActionBrush}" Padding="8,2" FontSize="11" />
+                                            Foreground="{DynamicResource TerminalActionBrush}" Padding="9,3" Margin="2,0,0,0" FontSize="11" />
                                     <Button Content="Save" Click="SaveLog_Click" Style="{StaticResource GhostButtonStyle}"
-                                            Foreground="{DynamicResource TerminalActionBrush}" Padding="8,2" FontSize="11" />
+                                            Foreground="{DynamicResource TerminalActionBrush}" Padding="9,3" Margin="2,0,0,0" FontSize="11" />
                                     <Button Content="Clear" Click="ClearLog_Click" Style="{StaticResource GhostButtonStyle}"
-                                            Foreground="{DynamicResource TerminalActionBrush}" Padding="8,2" FontSize="11" />
+                                            Foreground="{DynamicResource TerminalActionBrush}" Padding="9,3" Margin="2,0,0,0" FontSize="11" />
                                 </StackPanel>
                             </Grid>
                         </Border>

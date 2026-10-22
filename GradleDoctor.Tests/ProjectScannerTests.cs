@@ -57,6 +57,17 @@ public class ProjectScannerTests
     }
 
     [Fact]
+    public void ScanHonorsExplicitSkipSet()
+    {
+        using var temp = new TempDirectory();
+        var git = Path.Combine(temp.Path, ".git");
+        WriteWrapper(git, Gradle86);
+
+        Assert.Single(ProjectScanner.Scan(temp.Path, new HashSet<string>()));
+        Assert.Empty(ProjectScanner.Scan(temp.Path, new HashSet<string> { ".git" }));
+    }
+
+    [Fact]
     public void ScanFindsFlutterProjectWithoutRecursingIntoPlatforms()
     {
         using var temp = new TempDirectory();

@@ -70,7 +70,12 @@ public static class Format
 public class AppSettings
 {
     public static readonly string DefaultSkipFolders =
+        "node_modules,.git,.github,.dart_tool,build,.gradle,.idea,Pods,.pub-cache,ephemeral,.plugin_symlinks,plugin_symlinks,.symlinks,symlinks,windows,linux,macos,ios,web,.cxx,.externalNativeBuild,bin,obj,.vscode,DerivedData";
+
+    public const string LegacyDefaultSkipFolders =
         "node_modules,.git,.dart_tool,build,.gradle,.idea,Pods,.pub-cache,ephemeral,.plugin_symlinks,plugin_symlinks,windows,linux,macos,ios,.cxx,.externalNativeBuild";
+
+    public const int CurrentSettingsVersion = 2;
 
     public string LastFolder { get; set; } = "";
     public string GradleHome { get; set; } = "";          // empty = auto-detect
@@ -78,6 +83,7 @@ public class AppSettings
     public string KeepVersions { get; set; } = "";        // extra versions never deleted
     public string DefaultGradleVersion { get; set; } = ""; // empty = latest stable
     public string ThemeMode { get; set; } = "Light";       // Light, Dark, System
+    public int SettingsVersion { get; set; }
     public bool UseRecycleBin { get; set; } = true;
     public bool AutoDownload { get; set; } = true;
     public bool VerifyBuild { get; set; } = false;
@@ -246,7 +252,6 @@ public static class ProjectScanner
         stack.Push(root);
 
         var allSkip = new HashSet<string>(skip, StringComparer.OrdinalIgnoreCase);
-        foreach (var s in DefaultSkipSet) allSkip.Add(s);
 
         while (stack.Count > 0)
         {
