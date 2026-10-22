@@ -1,35 +1,115 @@
 <Window x:Class="GradleDoctor.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Gradle Doctor" Height="760" Width="1150"
-        WindowStartupLocation="CenterScreen">
-    <Grid Margin="12">
+        Title="Gradle Doctor" Height="820" Width="1200"
+        MinHeight="680" MinWidth="1000"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource WindowBgBrush}"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType"
+        UseLayoutRounding="True">
+
+    <Grid Margin="16,14,16,12">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="160" />
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" /> <!-- 0: Brand Header -->
+            <RowDefinition Height="Auto" /> <!-- 1: Folder Selection Card -->
+            <RowDefinition Height="Auto" /> <!-- 2: Settings Expander Card -->
+            <RowDefinition Height="Auto" /> <!-- 3: Command Actions Bar Card -->
+            <RowDefinition Height="*" />    <!-- 4: Projects DataGrid Card -->
+            <RowDefinition Height="165" />  <!-- 5: Terminal Output Console Card -->
+            <RowDefinition Height="Auto" /> <!-- 6: Progress & Status Footer -->
         </Grid.RowDefinitions>
 
-        <!-- Projects folder -->
-        <Grid Grid.Row="0" Margin="0,0,0,8">
+        <!-- ROW 0: APP BRAND HEADER -->
+        <Grid Grid.Row="0" Margin="0,0,0,14">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <TextBlock Text="Projects folder:" VerticalAlignment="Center" Margin="0,0,8,0" />
-            <TextBox x:Name="PathBox" Grid.Column="1" IsReadOnly="True" VerticalContentAlignment="Center" Padding="6" />
-            <Button Grid.Column="2" Content="Browse..." Margin="8,0,0,0" Padding="16,6" Click="Browse_Click" />
-            <Button x:Name="ScanBtn" Grid.Column="3" Content="Scan" Margin="8,0,0,0" Padding="16,6" Click="Scan_Click" />
+
+            <!-- Brand Icon -->
+            <Border Grid.Column="0" Width="40" Height="40" CornerRadius="10" Background="{StaticResource PrimaryBrush}" Margin="0,0,12,0">
+                <Border.Effect>
+                    <DropShadowEffect Color="#2563EB" Opacity="0.3" BlurRadius="8" ShadowDepth="2" Direction="270" />
+                </Border.Effect>
+                <!-- Medical Cross / Shield / Tech Icon -->
+                <Path Data="M 10 18 L 10 22 L 14 22 L 14 18 L 18 18 L 18 14 L 14 14 L 14 10 L 10 10 L 10 14 L 6 14 L 6 18 Z"
+                      Fill="#FFFFFF" Stretch="Uniform" Width="20" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+
+            <!-- Brand Title & Subtitle -->
+            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Gradle Doctor" FontSize="19" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" />
+                    <Border CornerRadius="4" Background="#DCFCE7" Padding="6,1" Margin="8,2,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="v1.0" FontSize="10" FontWeight="Bold" Foreground="#15803D" />
+                    </Border>
+                </StackPanel>
+                <TextBlock Text="Fast Gradle &amp; AGP version manager with automated compatibility validation"
+                           FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,1,0,0" />
+            </StackPanel>
+
+            <!-- Header Badges -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                <Border CornerRadius="14" Background="#FFFFFF" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" Padding="12,5" Margin="0,0,8,0">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Data="M 12 2 C 8.13 2 5 5.13 5 9 C 5 14.25 12 22 12 22 C 12 22 19 14.25 19 9 C 19 5.13 15.87 2 12 2 Z"
+                              Fill="{StaticResource PrimaryBrush}" Width="11" Height="11" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center" />
+                        <TextBlock x:Name="HomeBadgeText" Text="Gradle Home Active" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" />
+                    </StackPanel>
+                </Border>
+                <Border CornerRadius="14" Background="{StaticResource PrimaryLightBrush}" BorderBrush="#BFDBFE" BorderThickness="1" Padding="12,5">
+                    <TextBlock x:Name="ProjectCountBadge" Text="0 projects" FontSize="11" FontWeight="Bold" Foreground="{StaticResource PrimaryBrush}" />
+                </Border>
+            </StackPanel>
         </Grid>
 
-        <!-- Settings -->
-        <Expander Grid.Row="1" Header="Settings (everything here is yours to change)" Margin="0,0,0,8">
-            <Grid Margin="8,6,8,0">
+        <!-- ROW 1: PROJECTS FOLDER CARD -->
+        <Border Grid.Row="1" Background="{StaticResource CardBgBrush}" BorderBrush="{StaticResource CardBorderBrush}"
+                BorderThickness="1" CornerRadius="8" Padding="12,9" Margin="0,0,0,10">
+            <Border.Effect>
+                <DropShadowEffect Color="#0F172A" Opacity="0.03" BlurRadius="6" ShadowDepth="1" Direction="270" />
+            </Border.Effect>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+                    <!-- Folder SVG Icon -->
+                    <Path Data="M 2 4 C 2 2.9 2.9 2 4 2 L 8 2 L 10 4 L 18 4 C 19.1 4 20 4.9 20 6 L 20 16 C 20 17.1 19.1 18 18 18 L 4 18 C 2.9 18 2 17.1 2 16 L 2 4 Z"
+                          Fill="{StaticResource PrimaryBrush}" Width="15" Height="15" Stretch="Uniform" Margin="0,0,7,0" VerticalAlignment="Center" />
+                    <TextBlock Text="Projects folder:" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+
+                <TextBox x:Name="PathBox" Grid.Column="1" IsReadOnly="True" VerticalContentAlignment="Center" Padding="10,6"
+                         ToolTip="Folder containing your Android or Flutter projects" />
+
+                <Button Grid.Column="2" Content="Browse..." Margin="8,0,0,0" Padding="16,6" Click="Browse_Click" />
+
+                <Button x:Name="ScanBtn" Grid.Column="3" Content="Scan Projects" Margin="8,0,0,0" Padding="18,6"
+                        Style="{StaticResource PrimaryButtonStyle}" Click="Scan_Click" />
+            </Grid>
+        </Border>
+
+        <!-- ROW 2: SETTINGS CARD (EXPANDER) -->
+        <Expander Grid.Row="2" Margin="0,0,0,10">
+            <Expander.Header>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- Sliders / Config Icon -->
+                    <Path Data="M 3 6 L 15 6 M 3 12 L 21 12 M 3 18 L 9 18 M 15 4 L 15 8 M 9 10 L 9 14 M 18 16 L 18 20"
+                          Stroke="{StaticResource PrimaryBrush}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                          Width="16" Height="16" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Center" />
+                    <TextBlock Text="Settings &amp; Environment" FontWeight="SemiBold" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                    <TextBlock Text="— Gradle user home, ignore list, build verification" FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="8,0,0,0" VerticalAlignment="Center" />
+                </StackPanel>
+            </Expander.Header>
+
+            <Grid Margin="4,8,4,4">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
@@ -43,67 +123,306 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0" Text="Gradle home:" VerticalAlignment="Center" Margin="0,0,8,6" />
-                <TextBox x:Name="GradleHomeBox" Grid.Row="0" Grid.Column="1" Margin="0,0,0,6" Padding="4"
+                <!-- Gradle Home -->
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Gradle home:" FontWeight="Medium" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,10,8" />
+                <TextBox x:Name="GradleHomeBox" Grid.Row="0" Grid.Column="1" Margin="0,0,0,8" Padding="8,5"
                          ToolTip="Empty = auto-detect (GRADLE_USER_HOME or %USERPROFILE%\.gradle)" />
-                <Button Grid.Row="0" Grid.Column="2" Content="Browse..." Margin="8,0,0,6" Padding="12,3" Click="BrowseHome_Click" />
-                <Button Grid.Row="0" Grid.Column="3" Content="Auto" Margin="8,0,0,6" Padding="12,3" Click="ResetHome_Click" />
+                <Button Grid.Row="0" Grid.Column="2" Content="Browse..." Margin="8,0,0,8" Padding="12,5" Click="BrowseHome_Click" />
+                <Button Grid.Row="0" Grid.Column="3" Content="Auto" Margin="8,0,0,8" Padding="12,5" Click="ResetHome_Click" />
 
-                <TextBlock Grid.Row="1" Text="Skip folders:" VerticalAlignment="Center" Margin="0,0,8,6" />
-                <TextBox x:Name="SkipBox" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,0,0,6" Padding="4"
-                         ToolTip="Comma separated folder names ignored while scanning" />
+                <!-- Skip folders -->
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Skip folders:" FontWeight="Medium" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,10,8" />
+                <TextBox x:Name="SkipBox" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,0,0,8" Padding="8,5"
+                         ToolTip="Comma-separated folder names ignored during project scanning" />
 
-                <TextBlock Grid.Row="2" Text="Always keep:" VerticalAlignment="Center" Margin="0,0,8,6" />
-                <TextBox x:Name="KeepBox" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,0,0,6" Padding="4"
-                         ToolTip="Comma separated Gradle versions that cleanup must never delete, e.g. 8.14, 9.1.0" />
+                <!-- Always keep -->
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Always keep:" FontWeight="Medium" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,10,8" />
+                <TextBox x:Name="KeepBox" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,0,0,8" Padding="8,5"
+                         ToolTip="Comma-separated Gradle versions that cleanup must never delete, e.g. 8.14, 9.1.0" />
 
-                <StackPanel Grid.Row="3" Grid.ColumnSpan="4" Orientation="Horizontal" Margin="0,2,0,6">
-                    <CheckBox x:Name="VerifyCheck" Content="Build after update, roll back on failure"
-                              VerticalAlignment="Center" />
-                    <TextBlock Text="Task:" VerticalAlignment="Center" Margin="14,0,6,0" />
-                    <TextBox x:Name="TaskBox" Width="140" Padding="4" />
-                    <TextBlock Text="Timeout (min):" VerticalAlignment="Center" Margin="14,0,6,0" />
-                    <TextBox x:Name="TimeoutBox" Width="50" Padding="4" />
-                    <Button Content="Edit compatibility rules" Margin="14,0,0,0" Padding="12,3" Click="EditCompat_Click" />
+                <!-- Verification & Rules Row -->
+                <StackPanel Grid.Row="3" Grid.ColumnSpan="4" Orientation="Horizontal" Margin="0,4,0,2">
+                    <CheckBox x:Name="VerifyCheck" Content="Build after update, roll back on failure" VerticalAlignment="Center" />
+                    <TextBlock Text="Task:" FontWeight="Medium" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="16,0,6,0" />
+                    <TextBox x:Name="TaskBox" Width="130" Padding="8,4" />
+                    <TextBlock Text="Timeout (min):" FontWeight="Medium" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="14,0,6,0" />
+                    <TextBox x:Name="TimeoutBox" Width="55" Padding="8,4" HorizontalContentAlignment="Center" />
+                    <Button Content="Edit compatibility rules" Margin="16,0,0,0" Padding="14,5" Click="EditCompat_Click" />
                 </StackPanel>
             </Grid>
         </Expander>
 
-        <!-- Actions -->
-        <WrapPanel Grid.Row="2" Margin="0,0,0,8">
-            <TextBlock Text="Target Gradle:" VerticalAlignment="Center" Margin="0,0,8,0" />
-            <ComboBox x:Name="TargetBox" Width="110" IsEditable="True" Margin="0,0,10,0" />
-            <Button x:Name="SelAllBtn" Content="Select all" Margin="0,0,6,0" Padding="12,6" Click="SelectAll_Click" />
-            <Button x:Name="SelNoneBtn" Content="Select none" Margin="0,0,6,0" Padding="12,6" Click="SelectNone_Click" />
-            <Button x:Name="SetTargetBtn" Content="Set target on selected" Margin="0,0,14,0" Padding="12,6" Click="SetTarget_Click" />
-            <Button x:Name="DryBtn" Content="Dry Run" Margin="0,0,6,0" Padding="14,6" Click="DryRun_Click" />
-            <Button x:Name="ApplyBtn" Content="Apply to selected" Margin="0,0,6,0" Padding="14,6" Click="Apply_Click" />
-            <Button x:Name="CleanBtn" Content="Clean old versions..." Margin="0,0,6,0" Padding="14,6" Click="Clean_Click" />
-            <Button x:Name="StopBtn" Content="Stop Gradle daemons" Padding="14,6" Click="Stop_Click" />
-        </WrapPanel>
+        <!-- ROW 3: COMMAND ACTIONS TOOLBAR CARD -->
+        <Border Grid.Row="3" Background="{StaticResource CardBgBrush}" BorderBrush="{StaticResource CardBorderBrush}"
+                BorderThickness="1" CornerRadius="8" Padding="12,8" Margin="0,0,0,10">
+            <Border.Effect>
+                <DropShadowEffect Color="#0F172A" Opacity="0.03" BlurRadius="6" ShadowDepth="1" Direction="270" />
+            </Border.Effect>
+            <WrapPanel VerticalAlignment="Center">
+                <!-- Target Version -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+                    <TextBlock Text="Target Gradle:" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <ComboBox x:Name="TargetBox" Width="115" IsEditable="True" />
+                </StackPanel>
 
-        <!-- Projects -->
-        <DataGrid x:Name="ProjectsGrid" Grid.Row="3" AutoGenerateColumns="False" CanUserAddRows="False"
-                  HeadersVisibility="Column" AlternatingRowBackground="#F4F4F4" SelectionMode="Single">
-            <DataGrid.Columns>
-                <DataGridCheckBoxColumn Header="Use" Binding="{Binding Selected, UpdateSourceTrigger=PropertyChanged}" Width="45" />
-                <DataGridTextColumn Header="Project" Binding="{Binding Name}" Width="170" IsReadOnly="True" />
-                <DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="65" IsReadOnly="True" />
-                <DataGridTextColumn Header="Gradle" Binding="{Binding CurrentGradle}" Width="70" IsReadOnly="True" />
-                <DataGridTextColumn Header="AGP" Binding="{Binding Agp}" Width="70" IsReadOnly="True" />
-                <DataGridTextColumn Header="Target (editable)" Binding="{Binding Target, UpdateSourceTrigger=LostFocus}" Width="110" />
-                <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="130" IsReadOnly="True" />
-                <DataGridTextColumn Header="Warning" Binding="{Binding Warning}" Width="230" IsReadOnly="True" />
-                <DataGridTextColumn Header="Path" Binding="{Binding Path}" Width="*" IsReadOnly="True" />
-            </DataGrid.Columns>
-        </DataGrid>
+                <!-- Selection Group -->
+                <Button x:Name="SelAllBtn" Content="Select all" Margin="0,0,6,0" Padding="12,6" Click="SelectAll_Click" />
+                <Button x:Name="SelNoneBtn" Content="Select none" Margin="0,0,6,0" Padding="12,6" Click="SelectNone_Click" />
+                <Button x:Name="SetTargetBtn" Content="Set target on selected" Margin="0,0,12,0" Padding="12,6" Click="SetTarget_Click" />
 
-        <!-- Log -->
-        <TextBox x:Name="LogBox" Grid.Row="4" Margin="0,10,0,0" IsReadOnly="True"
-                 FontFamily="Consolas" VerticalScrollBarVisibility="Auto"
-                 HorizontalScrollBarVisibility="Auto" TextWrapping="NoWrap" />
+                <!-- Separator -->
+                <Rectangle Width="1" Height="24" Fill="{StaticResource CardBorderBrush}" Margin="0,0,12,0" VerticalAlignment="Center" />
 
-        <TextBlock x:Name="StatusText" Grid.Row="5" Margin="0,8,0,0" Foreground="Gray"
-                   Text="Choose your projects folder, then click Scan." />
+                <!-- Execution Group -->
+                <Button x:Name="DryBtn" Content="Dry Run" Margin="0,0,6,0" Padding="16,6" Click="DryRun_Click" />
+                <Button x:Name="ApplyBtn" Content="Apply to selected" Margin="0,0,12,0" Padding="16,6"
+                        Style="{StaticResource SuccessButtonStyle}" Click="Apply_Click" />
+
+                <!-- Separator -->
+                <Rectangle Width="1" Height="24" Fill="{StaticResource CardBorderBrush}" Margin="0,0,12,0" VerticalAlignment="Center" />
+
+                <!-- Maintenance Group -->
+                <Button x:Name="CleanBtn" Content="Clean old versions..." Margin="0,0,6,0" Padding="14,6" Click="Clean_Click" />
+                <Button x:Name="StopBtn" Content="Stop daemons" Padding="14,6" Style="{StaticResource DangerButtonStyle}" Click="Stop_Click" />
+            </WrapPanel>
+        </Border>
+
+        <!-- ROW 4: PROJECTS DATAGRID CARD -->
+        <Border Grid.Row="4" Background="{StaticResource CardBgBrush}" BorderBrush="{StaticResource CardBorderBrush}"
+                BorderThickness="1" CornerRadius="8" ClipToBounds="True">
+            <Border.Effect>
+                <DropShadowEffect Color="#0F172A" Opacity="0.03" BlurRadius="6" ShadowDepth="1" Direction="270" />
+            </Border.Effect>
+            <DockPanel>
+                <!-- Table Header Bar -->
+                <Border DockPanel.Dock="Top" Background="#F8FAFC" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="0,0,0,1" Padding="14,8">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="Discovered Projects" FontWeight="SemiBold" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" />
+                            <TextBlock Text=" — Select items to update or inspect compatibility" FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="6,0,0,0" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" Text="Double-click Target column to customize individual version"
+                                   FontSize="11" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" />
+                    </Grid>
+                </Border>
+
+                <!-- DataGrid -->
+                <DataGrid x:Name="ProjectsGrid" AutoGenerateColumns="False" CanUserAddRows="False"
+                          HeadersVisibility="Column" SelectionMode="Single" BorderThickness="0">
+                    <DataGrid.Columns>
+                        <!-- Use Checkbox -->
+                        <DataGridTemplateColumn Header="Use" Width="48">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <CheckBox IsChecked="{Binding Selected, UpdateSourceTrigger=PropertyChanged}"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- Project Name -->
+                        <DataGridTemplateColumn Header="Project" Width="180" IsReadOnly="True">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Path Data="M 3 4 C 3 2.9 3.9 2 5 2 L 9 2 L 11 4 L 19 4 C 20.1 4 21 4.9 21 6 L 21 16 C 21 17.1 20.1 18 19 18 L 5 18 C 3.9 18 3 17.1 3 16 Z"
+                                              Fill="{StaticResource PrimaryBrush}" Opacity="0.75" Width="13" Height="13" Stretch="Uniform" Margin="0,0,7,0" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"
+                                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- Type Badge -->
+                        <DataGridTemplateColumn Header="Type" Width="85" IsReadOnly="True">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Border x:Name="typePill" CornerRadius="4" Padding="7,2" HorizontalAlignment="Center">
+                                        <TextBlock x:Name="typeText" Text="{Binding Type}" FontSize="11" FontWeight="Bold" />
+                                    </Border>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding Type}" Value="Android">
+                                            <Setter TargetName="typePill" Property="Background" Value="#DCFCE7" />
+                                            <Setter TargetName="typeText" Property="Foreground" Value="#15803D" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Type}" Value="Flutter">
+                                            <Setter TargetName="typePill" Property="Background" Value="#E0F2FE" />
+                                            <Setter TargetName="typeText" Property="Foreground" Value="#0369A1" />
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- Current Gradle -->
+                        <DataGridTextColumn Header="Gradle" Binding="{Binding CurrentGradle}" Width="75" IsReadOnly="True"
+                                            FontFamily="{StaticResource MonoFont}" FontWeight="Medium" />
+
+                        <!-- AGP -->
+                        <DataGridTextColumn Header="AGP" Binding="{Binding Agp}" Width="75" IsReadOnly="True"
+                                            FontFamily="{StaticResource MonoFont}" FontWeight="Medium" />
+
+                        <!-- Target (editable) -->
+                        <DataGridTextColumn Header="Target (editable)" Binding="{Binding Target, UpdateSourceTrigger=LostFocus}"
+                                            Width="115" FontFamily="{StaticResource MonoFont}" FontWeight="SemiBold" />
+
+                        <!-- Status Badge -->
+                        <DataGridTemplateColumn Header="Status" Width="135" IsReadOnly="True">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Border x:Name="statusPill" CornerRadius="4" Padding="8,2" HorizontalAlignment="Left"
+                                            Visibility="{Binding Status, Converter={StaticResource StringNotEmptyToVisibility}}">
+                                        <TextBlock x:Name="statusText" Text="{Binding Status}" FontSize="11" FontWeight="SemiBold" />
+                                    </Border>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding Status}" Value="Up to date">
+                                            <Setter TargetName="statusPill" Property="Background" Value="#DCFCE7" />
+                                            <Setter TargetName="statusText" Property="Foreground" Value="#15803D" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Status}" Value="Will change">
+                                            <Setter TargetName="statusPill" Property="Background" Value="#FEF3C7" />
+                                            <Setter TargetName="statusText" Property="Foreground" Value="#B45309" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Status}" Value="Updated">
+                                            <Setter TargetName="statusPill" Property="Background" Value="#DCFCE7" />
+                                            <Setter TargetName="statusText" Property="Foreground" Value="#15803D" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Status}" Value="Updated, build OK">
+                                            <Setter TargetName="statusPill" Property="Background" Value="#DCFCE7" />
+                                            <Setter TargetName="statusText" Property="Foreground" Value="#15803D" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Status}" Value="Updated (not built)">
+                                            <Setter TargetName="statusPill" Property="Background" Value="#EFF6FF" />
+                                            <Setter TargetName="statusText" Property="Foreground" Value="#1E40AF" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Status}" Value="Updating...">
+                                            <Setter TargetName="statusPill" Property="Background" Value="#E0E7FF" />
+                                            <Setter TargetName="statusText" Property="Foreground" Value="#4338CA" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Status}" Value="Building...">
+                                            <Setter TargetName="statusPill" Property="Background" Value="#E0E7FF" />
+                                            <Setter TargetName="statusText" Property="Foreground" Value="#4338CA" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Status}" Value="Rolled back">
+                                            <Setter TargetName="statusPill" Property="Background" Value="#FEE2E2" />
+                                            <Setter TargetName="statusText" Property="Foreground" Value="#B91C1C" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Status}" Value="Failed">
+                                            <Setter TargetName="statusPill" Property="Background" Value="#FEE2E2" />
+                                            <Setter TargetName="statusText" Property="Foreground" Value="#B91C1C" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Status}" Value="Bad target">
+                                            <Setter TargetName="statusPill" Property="Background" Value="#FEE2E2" />
+                                            <Setter TargetName="statusText" Property="Foreground" Value="#B91C1C" />
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- Warning Column -->
+                        <DataGridTemplateColumn Header="Warning" Width="230" IsReadOnly="True">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Path Data="M 1 21 L 23 21 L 12 2 Z M 12 18 A 1 1 0 1 1 12 16 A 1 1 0 0 1 12 18 Z M 11 10 L 13 10 L 13 14 L 11 14 Z"
+                                              Fill="{StaticResource WarningBrush}" Width="12" Height="12" Stretch="Uniform" Margin="0,0,6,0"
+                                              Visibility="{Binding Warning, Converter={StaticResource StringNotEmptyToVisibility}}" />
+                                        <TextBlock Text="{Binding Warning}" Foreground="{StaticResource WarningBrush}" FontWeight="Medium"
+                                                   FontSize="12" TextTrimming="CharacterEllipsis" ToolTip="{Binding Warning}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- Project Path -->
+                        <DataGridTextColumn Header="Path" Binding="{Binding Path}" Width="*" IsReadOnly="True"
+                                            Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </DockPanel>
+        </Border>
+
+        <!-- ROW 5: TERMINAL OUTPUT CONSOLE CARD -->
+        <Border Grid.Row="5" Background="{StaticResource TerminalBgBrush}" BorderBrush="{StaticResource TerminalBorderBrush}"
+                BorderThickness="1" CornerRadius="8" Margin="0,10,0,0" ClipToBounds="True">
+            <Border.Effect>
+                <DropShadowEffect Color="#0F172A" Opacity="0.05" BlurRadius="6" ShadowDepth="1" Direction="270" />
+            </Border.Effect>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- Terminal Top Bar -->
+                <Border Grid.Row="0" Background="{StaticResource TerminalHeaderBrush}" BorderBrush="{StaticResource TerminalBorderBrush}"
+                        BorderThickness="0,0,0,1" Padding="12,5">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <!-- Terminal prompt icon >_ -->
+                            <Path Data="M 4 6 L 10 12 L 4 18 M 12 18 L 20 18" Stroke="{StaticResource TerminalAccentBrush}"
+                                  StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                  Width="14" Height="14" Stretch="Uniform" Margin="0,0,7,0" VerticalAlignment="Center" />
+                            <TextBlock Text="Execution &amp; Diagnostic Log" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="#94A3B8" VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <!-- Clear Log Button -->
+                        <Button Grid.Column="1" Content="Clear log" Click="ClearLog_Click"
+                                Background="Transparent" Foreground="#94A3B8" BorderThickness="0"
+                                Padding="8,2" FontSize="11" Cursor="Hand" />
+                    </Grid>
+                </Border>
+
+                <!-- Terminal TextBox -->
+                <TextBox x:Name="LogBox" Grid.Row="1" IsReadOnly="True"
+                         FontFamily="{StaticResource MonoFont}" FontSize="12"
+                         Foreground="{StaticResource TerminalTextBrush}" Background="Transparent"
+                         BorderThickness="0" Padding="12,8"
+                         VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                         TextWrapping="NoWrap" CaretBrush="{StaticResource TerminalAccentBrush}" />
+            </Grid>
+        </Border>
+
+        <!-- ROW 6: PROGRESS & STATUS FOOTER -->
+        <StackPanel Grid.Row="6" Margin="0,6,0,0">
+            <!-- Smooth Indeterminate Progress Bar -->
+            <ProgressBar x:Name="WorkProgress" Style="{StaticResource ModernProgressBarStyle}"
+                         IsIndeterminate="True" Visibility="Collapsed" Margin="0,0,0,6" />
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Left: Status Dot & Message -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Ellipse x:Name="StatusDot" Width="8" Height="8" Fill="{StaticResource SuccessBrush}" Margin="0,0,8,0" VerticalAlignment="Center">
+                        <Ellipse.RenderTransform>
+                            <ScaleTransform ScaleX="1" ScaleY="1" />
+                        </Ellipse.RenderTransform>
+                    </Ellipse>
+                    <TextBlock x:Name="StatusText" Foreground="{StaticResource TextSecondaryBrush}"
+                               FontSize="12" FontWeight="Medium"
+                               Text="Choose your projects folder, then click Scan." VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Right: Active Home Path Note -->
+                <TextBlock x:Name="HomeLabel" Grid.Column="1" Foreground="{StaticResource TextMutedBrush}"
+                           FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Right" />
+            </Grid>
+        </StackPanel>
     </Grid>
 </Window>

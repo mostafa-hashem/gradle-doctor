@@ -25,6 +25,7 @@ public partial class MainWindow : Window
         TaskBox.Text = _s.VerifyTask;
         TimeoutBox.Text = _s.TimeoutMinutes.ToString();
         Closing += (_, _) => SaveSettings();
+        UpdateHomeLabels();
         SetButtons(true);
         Log($"Gradle home in use: {Home}");
     }
@@ -35,6 +36,16 @@ public partial class MainWindow : Window
     string? CustomHome => string.IsNullOrWhiteSpace(GradleHomeBox.Text) ? null : GradleHomeBox.Text.Trim();
     int Timeout => int.TryParse(TimeoutBox.Text, out var t) && t > 0 ? t : 15;
     string VerifyTask => string.IsNullOrWhiteSpace(TaskBox.Text) ? "assembleDebug" : TaskBox.Text.Trim();
+
+    void UpdateHomeLabels()
+    {
+        if (HomeLabel != null) HomeLabel.Text = $"Home: {Home}";
+        if (HomeBadgeText != null)
+        {
+            var folderName = System.IO.Path.GetFileName(Home.TrimEnd('\\', '/'));
+            HomeBadgeText.Text = string.IsNullOrEmpty(folderName) ? "Gradle Home" : folderName;
+        }
+    }
 
     HashSet<string> SkipSet() =>
         SkipBox.Text.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -54,6 +65,7 @@ public partial class MainWindow : Window
         _s.VerifyTask = VerifyTask;
         _s.TimeoutMinutes = Timeout;
         _s.Save();
+        UpdateHomeLabels();
     }
 
     // ---------- UI helpers ----------
@@ -71,6 +83,21 @@ public partial class MainWindow : Window
         ScanBtn.IsEnabled = enabled;
         foreach (var b in new Button[] { SelAllBtn, SelNoneBtn, SetTargetBtn, DryBtn, ApplyBtn, CleanBtn, StopBtn })
             b.IsEnabled = enabled && _scanned;
+
+        if (WorkProgress != null)
+            WorkProgress.Visibility = enabled ? Visibility.Collapsed : Visibility.Visible;
+
+        if (StatusDot != null)
+        {
+            StatusDot.Fill = enabled
+                ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(16, 185, 129))
+                : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(37, 99, 235));
+        }
+    }
+
+    void ClearLog_Click(object sender, RoutedEventArgs e)
+    {
+        LogBox.Clear();
     }
 
     void Commit() => ProjectsGrid.CommitEdit(DataGridEditingUnit.Row, true);
@@ -79,6 +106,8 @@ public partial class MainWindow : Window
     {
         ProjectsGrid.ItemsSource = null;
         ProjectsGrid.ItemsSource = _projects;
+        if (ProjectCountBadge != null)
+            ProjectCountBadge.Text = $"{_projects.Count} project{(_projects.Count == 1 ? "" : "s")}";
     }
 
     string? ReadGlobalTarget(bool showError = true)
