@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>GradleDoctor</RootNamespace>
+    <AssemblyName>GradleDoctor</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Update="compat.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+</Project>
