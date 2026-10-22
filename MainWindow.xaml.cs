@@ -73,7 +73,11 @@ public partial class MainWindow : Window
         };
         StateChanged += (_, _) => UpdateWindowState();
         SizeChanged += (_, _) => UpdateSettingsHeight();
-        SourceInitialized += (_, _) => EnableRoundedCorners();
+        SourceInitialized += (_, _) =>
+        {
+            EnableRoundedCorners();
+            HookMinMaxInfo();
+        };
         Loaded += async (_, _) =>
         {
             UpdateHomeLabels();
@@ -150,8 +154,49 @@ public partial class MainWindow : Window
         var maximized = WindowState == WindowState.Maximized;
         MaxBtn.Content = maximized ? "\uE923" : "\uE922";
         MaxBtn.ToolTip = maximized ? "Restore" : "Maximize";
-        WindowRoot.Margin = maximized ? new Thickness(7) : new Thickness(0);
+        WindowRoot.Margin = new Thickness(0);
         WindowRoot.BorderThickness = maximized ? new Thickness(0) : new Thickness(1);
+    }
+
+    void HookMinMaxInfo()
+    {
+        var hwnd = new WindowInteropHelper(this).Handle;
+        var source = HwndSource.FromHwnd(hwnd);
+        source?.AddHook(HwndHook);
+    }
+
+    IntPtr HwndHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        const int WM_GETMINMAXINFO = 0x0024;
+        if (msg == WM_GETMINMAXINFO)
+        {
+            WmGetMinMaxInfo(hwnd, lParam);
+            handled = true;
+        }
+        return IntPtr.Zero;
+    }
+
+    static void WmGetMinMaxInfo(IntPtr hwnd, IntPtr lParam)
+    {
+        var mmi = Marshal.PtrToStructure<MINMAXINFO>(lParam);
+        var monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+        if (monitor != IntPtr.Zero)
+        {
+            var mi = new MONITORINFO();
+            if (GetMonitorInfo(monitor, mi))
+            {
+                var rcWork = mi.rcWork;
+                var rcMonitor = mi.rcMonitor;
+
+                mmi.ptMaxPosition.X = Math.Abs(rcWork.Left - rcMonitor.Left);
+                mmi.ptMaxPosition.Y = Math.Abs(rcWork.Top - rcMonitor.Top);
+                mmi.ptMaxSize.X = Math.Abs(rcWork.Right - rcWork.Left);
+                mmi.ptMaxSize.Y = Math.Abs(rcWork.Bottom - rcWork.Top);
+                mmi.ptMaxTrackSize.X = Math.Max(mmi.ptMaxTrackSize.X, mmi.ptMaxSize.X);
+                mmi.ptMaxTrackSize.Y = Math.Max(mmi.ptMaxTrackSize.Y, mmi.ptMaxSize.Y);
+            }
+        }
+        Marshal.StructureToPtr(mmi, lParam, true);
     }
 
     void EnableRoundedCorners()
@@ -165,6 +210,46 @@ public partial class MainWindow : Window
         }
         catch { }
     }
+
+    [StructLayout(LayoutKind.Sequential)]
+    struct POINT
+    {
+        public int X;
+        public int Y;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    struct MINMAXINFO
+    {
+        public POINT ptReserved;
+        public POINT ptMaxSize;
+        public POINT ptMaxPosition;
+        public POINT ptMinTrackSize;
+        public POINT ptMaxTrackSize;
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+    class MONITORINFO
+    {
+        public int cbSize = Marshal.SizeOf(typeof(MONITORINFO));
+        public RECT rcMonitor = new();
+        public RECT rcWork = new();
+        public int dwFlags = 0;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    struct RECT
+    {
+        public int Left, Top, Right, Bottom;
+    }
+
+    const uint MONITOR_DEFAULTTONEAREST = 0x00000002;
+
+    [DllImport("user32.dll")]
+    static extern IntPtr MonitorFromWindow(IntPtr handle, uint flags);
+
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    static extern bool GetMonitorInfo(IntPtr hMonitor, MONITORINFO lpmi);
 
     [DllImport("dwmapi.dll")]
     static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
