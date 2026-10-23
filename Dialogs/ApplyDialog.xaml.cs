@@ -14,10 +14,10 @@ public partial class ApplyDialog : Window
 
         ChangesGrid.ItemsSource = items;
         ProjectsCount.Text = items.Count.ToString();
-        GradleCount.Text = items.Count(i => i.GradleChange != "—").ToString();
+        GradleCount.Text = items.Count(i => i.GradleChange.Contains("→")).ToString();
         AgpCount.Text = agpCount.ToString();
         WarningsCount.Text = warnings.ToString();
-        SubtitleText.Text = $"{items.Count} project{(items.Count == 1 ? "" : "s")} selected for update";
+        SubtitleText.Text = $"{items.Count} project{(items.Count == 1 ? "" : "s")} selected for update & health check";
 
         if (warnings > 0)
         {
@@ -26,9 +26,9 @@ public partial class ApplyDialog : Window
         }
 
         VerifyText.Text = verify
-            ? $"After each update, 'gradlew {verifyTask}' runs. If it fails, the project is rolled back automatically. The new Gradle distribution is downloaded first."
-            : "Build verification is off. Changes are written directly; enable verification in Settings to build and roll back on failure.";
-        BackupText.Text = "Backups are created next to each modified wrapper/Gradle file and kept for manual rollback.";
+            ? $"After file checks and updates, 'gradlew {verifyTask}' runs. If it fails, the project is rolled back automatically."
+            : "Build verification is off. Project files are checked and aligned directly; enable verification in Settings to build and roll back on failure.";
+        BackupText.Text = "Backups (.gradledoctor.bak) are created before any file is modified.";
 
         if (!string.IsNullOrWhiteSpace(extraNote))
         {

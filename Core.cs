@@ -406,7 +406,7 @@ public static class ProjectScanner
         return result;
     }
 
-    /// Restores wrapper and any AGP build files from backups.
+    /// Restores wrapper, project properties, and any AGP build files from backups.
     public static void Restore(ProjectInfo p)
     {
         var bak = BakPath(p);
@@ -414,6 +414,20 @@ public static class ProjectScanner
         {
             File.Copy(bak, p.PropsFile, overwrite: true);
             File.Delete(bak);
+        }
+        foreach (var extra in new[] { "local.properties", "gradle.properties" })
+        {
+            var f = System.IO.Path.Combine(p.Path, extra);
+            var fBak = f + ".gradledoctor.bak";
+            if (File.Exists(fBak))
+            {
+                try
+                {
+                    File.Copy(fBak, f, overwrite: true);
+                    File.Delete(fBak);
+                }
+                catch { }
+            }
         }
         AgpResolver.Restore(p.Path);
         p.CurrentGradle = ReadVersion(p.PropsFile);

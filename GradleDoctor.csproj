@@ -20,6 +20,9 @@
     </None>
     <EmbeddedResource Include="compat.json" />
     <Resource Include="Assets\GradleDoctor.ico" />
+    <EmbeddedResource Include="Assets\gradle-wrapper.jar" />
+    <EmbeddedResource Include="Assets\gradlew.bat" />
+    <EmbeddedResource Include="Assets\gradlew" />
     <Compile Remove="GradleDoctor.Tests\**" />
     <Page Remove="GradleDoctor.Tests\**" />
     <ApplicationDefinition Remove="GradleDoctor.Tests\**" />

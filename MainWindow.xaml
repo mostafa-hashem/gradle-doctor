@@ -500,11 +500,27 @@
                                                             <Setter TargetName="StatusPill" Property="Background" Value="{DynamicResource PrimaryLightBrush}" />
                                                             <Setter TargetName="StatusText" Property="Foreground" Value="{DynamicResource PrimaryBrush}" />
                                                         </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Checking...">
+                                                            <Setter TargetName="StatusPill" Property="Background" Value="{DynamicResource PrimaryLightBrush}" />
+                                                            <Setter TargetName="StatusText" Property="Foreground" Value="{DynamicResource PrimaryBrush}" />
+                                                        </DataTrigger>
                                                         <DataTrigger Binding="{Binding Status}" Value="Updated">
                                                             <Setter TargetName="StatusPill" Property="Background" Value="{DynamicResource SuccessLightBrush}" />
                                                             <Setter TargetName="StatusText" Property="Foreground" Value="{DynamicResource SuccessForegroundBrush}" />
                                                         </DataTrigger>
                                                         <DataTrigger Binding="{Binding Status}" Value="Updated, build OK">
+                                                            <Setter TargetName="StatusPill" Property="Background" Value="{DynamicResource SuccessLightBrush}" />
+                                                            <Setter TargetName="StatusText" Property="Foreground" Value="{DynamicResource SuccessForegroundBrush}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Verified, build OK">
+                                                            <Setter TargetName="StatusPill" Property="Background" Value="{DynamicResource SuccessLightBrush}" />
+                                                            <Setter TargetName="StatusText" Property="Foreground" Value="{DynamicResource SuccessForegroundBrush}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Verified (Ready)">
+                                                            <Setter TargetName="StatusPill" Property="Background" Value="{DynamicResource SuccessLightBrush}" />
+                                                            <Setter TargetName="StatusText" Property="Foreground" Value="{DynamicResource SuccessForegroundBrush}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Updated &amp; Verified">
                                                             <Setter TargetName="StatusPill" Property="Background" Value="{DynamicResource SuccessLightBrush}" />
                                                             <Setter TargetName="StatusText" Property="Foreground" Value="{DynamicResource SuccessForegroundBrush}" />
                                                         </DataTrigger>
@@ -769,8 +785,8 @@
             </Grid>
 
             <!-- Loading overlay / Floating progress card -->
-            <Grid x:Name="BusyOverlay" Grid.RowSpan="2" Background="Transparent"
-                  Visibility="Collapsed" Panel.ZIndex="50" IsHitTestVisible="False">
+            <Grid x:Name="BusyOverlay" Grid.RowSpan="2" Background="{DynamicResource OverlayBrush}"
+                  Visibility="Collapsed" Panel.ZIndex="50" IsHitTestVisible="True">
                 <Border x:Name="BusyCard" Background="{DynamicResource CardBgBrush}" BorderBrush="{DynamicResource CardBorderBrush}"
                         BorderThickness="1" CornerRadius="12" Padding="20,16" Width="410"
                         HorizontalAlignment="Center" VerticalAlignment="Center" Effect="{StaticResource CardShadow}"
@@ -795,7 +811,7 @@
                             </StackPanel>
                             <Button x:Name="BusyMiniToggleBtn" Grid.Column="1" Content="&#xE921;" FontFamily="Segoe MDL2 Assets"
                                     Style="{StaticResource GhostButtonStyle}" Width="26" Height="26" Padding="0"
-                                    Click="BusyMiniToggle_Click" ToolTip="Minimize / Expand progress card" Cursor="Arrow" />
+                                    Click="BusyMiniToggle_Click" ToolTip="Minimize / Expand progress card" Cursor="Hand" />
                         </Grid>
 
                         <!-- Body (collapsible) -->
@@ -819,8 +835,8 @@
                         </StackPanel>
 
                         <!-- Footer -->
-                        <Button x:Name="CancelBtn" Content="Cancel" HorizontalAlignment="Center" Padding="16,5"
-                                Margin="0,2,0,0" Click="Cancel_Click" Cursor="Arrow" />
+                        <Button x:Name="CancelBtn" Content="Cancel" HorizontalAlignment="Center" Padding="16,6"
+                                Margin="0,4,0,0" Style="{StaticResource BaseButtonStyle}" Click="Cancel_Click" Cursor="Hand" />
                     </StackPanel>
                 </Border>
             </Grid>

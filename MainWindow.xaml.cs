@@ -1041,14 +1041,25 @@ public partial class MainWindow : Window
         RecalculateAll(_compat);
 
         var changes = rows.Count(p => p.Status == "Will change");
-        Log($"[Dry run] {changes} of {rows.Count} selected project(s) would change. Nothing was modified.");
-        foreach (var p in rows.Where(p => p.Status == "Will change"))
+        Log($"[Dry run] Checking {rows.Count} selected project(s) ({changes} version upgrade(s)). Nothing was modified.");
+        foreach (var p in rows)
         {
             var details = new List<string>();
             if (p.CurrentGradle != p.Target) details.Add($"Gradle {p.CurrentGradle} -> {p.Target}");
+            else details.Add($"Gradle {p.Target} (matches)");
+
             if (p.Agp != "-" && p.Agp != p.TargetAgp && !string.IsNullOrWhiteSpace(p.TargetAgp))
                 details.Add($"AGP {p.Agp} -> {p.TargetAgp}");
-            Log($"   {p.Name}: {string.Join(", ", details)}");
+            else if (p.Agp != "-")
+                details.Add($"AGP {p.Agp} (matches)");
+
+            var inspection = ProjectDoctor.InspectHealth(p, p.Target, _projects);
+            if (inspection.Issues.Count > 0)
+                details.Add($"Needs fix: {string.Join(", ", inspection.Issues)}");
+            else
+                details.Add("Files healthy");
+
+            Log($"   {p.Name}: {string.Join(" | ", details)}");
         }
         foreach (var p in rows.Where(p => p.Warning.Length > 0))
             Log($"   WARNING {p.Name}: {p.Warning}");
@@ -1066,8 +1077,8 @@ public partial class MainWindow : Window
         }
 
         UpdateSummary();
-        SetStatus($"Dry run: {changes} change(s).", changes > 0 ? "WarningBrush" : "SuccessBrush");
-        ToastService.Show($"{changes} project(s) would change.", changes > 0 ? ToastKind.Warning : ToastKind.Success);
+        SetStatus($"Dry run: {rows.Count} checked ({changes} version changes).", changes > 0 ? "WarningBrush" : "SuccessBrush");
+        ToastService.Show($"Dry run completed for {rows.Count} project(s).", ToastKind.Success);
     }
 
     bool EnsureTargets(List<ProjectInfo> rows)
@@ -1102,25 +1113,20 @@ public partial class MainWindow : Window
         _compat = Compat.Load();
         RecalculateAll(_compat);
 
-        var todo = rows.Where(p => p.Status == "Will change").ToList();
-        if (todo.Count == 0)
-        {
-            DialogService.Info("Nothing to change: selected projects already match their target Gradle and AGP.");
-            return;
-        }
+        var todo = rows;
 
         var plan = todo.Select(p => new ApplyPlanItem(
             p,
-            p.CurrentGradle != p.Target ? $"{p.CurrentGradle} → {p.Target}" : "—",
+            p.CurrentGradle != p.Target ? $"{p.CurrentGradle} → {p.Target}" : $"{p.Target} (Verify & Fix)",
             p.Agp != "-" && p.Agp != p.TargetAgp && !string.IsNullOrWhiteSpace(p.TargetAgp)
-                ? $"{p.Agp} → {p.TargetAgp}" : "—",
+                ? $"{p.Agp} → {p.TargetAgp}" : (p.Agp != "-" ? $"{p.Agp} (Verify & Fix)" : "—"),
             p.Warning)).ToList();
 
         var warnings = todo.Count(p => p.Warning.Length > 0);
         var agpCount = todo.Count(p => p.Agp != "-" && p.Agp != p.TargetAgp && !string.IsNullOrWhiteSpace(p.TargetAgp));
 
         string? jdkNote = null;
-        if (todo.Any(p => p.TargetAgp.Split('.')[0] == "9"))
+        if (todo.Any(p => (!string.IsNullOrWhiteSpace(p.TargetAgp) ? p.TargetAgp : p.Agp).Split('.')[0] == "9"))
         {
             var (major, text) = await JavaService.DetectAsync();
             if (major is int value && value < 17)
@@ -1149,10 +1155,10 @@ public partial class MainWindow : Window
                 var p = todo[i];
                 ct.ThrowIfCancellationRequested();
                 double startPct = (double)i / total * 100;
-                SetProgress(startPct, $"Updating {p.Name} ...", $"{i + 1} / {total}");
+                SetProgress(startPct, $"Processing {p.Name} ...", $"{i + 1} / {total}");
                 try
                 {
-                    p.Status = "Updating...";
+                    p.Status = "Checking...";
                     UpdateDetails();
 
                     var distType = !string.IsNullOrWhiteSpace(p.DistributionType) ? p.DistributionType : "bin";
@@ -1163,7 +1169,12 @@ public partial class MainWindow : Window
                         checksums[cacheKey] = checksum;
                     }
 
-                    var gradleChanged = ProjectScanner.UpdateWrapper(p, p.Target, checksum);
+                    var gradleChanged = false;
+                    if (p.CurrentGradle != p.Target)
+                    {
+                        gradleChanged = ProjectScanner.UpdateWrapper(p, p.Target, checksum);
+                    }
+
                     var agpChanged = false;
                     if (p.Agp != "-" && !string.IsNullOrWhiteSpace(p.TargetAgp) &&
                         p.TargetAgp != "-" && p.Agp != p.TargetAgp)
@@ -1174,20 +1185,36 @@ public partial class MainWindow : Window
                             Log($"   {p.Name}: AGP declaration was not updated ({agpResult.Error ?? "not found"}).");
                     }
 
-                    if (!gradleChanged && !agpChanged)
+                    // Always run ProjectDoctor health check and auto-repair:
+                    var health = ProjectDoctor.CheckAndFix(p, p.Target, checksum, _projects, LogUi);
+
+                    if (gradleChanged || agpChanged)
                     {
-                        p.Status = "No change";
-                        continue;
+                        var message = $"{p.Name}:";
+                        if (gradleChanged) message += $" Gradle -> {p.Target}";
+                        if (agpChanged) message += $" | AGP -> {p.TargetAgp}";
+                        Log(message);
                     }
 
-                    var message = $"{p.Name}:";
-                    if (gradleChanged) message += $" Gradle -> {p.Target}";
-                    if (agpChanged) message += $" | AGP -> {p.TargetAgp}";
-                    Log(message);
+                    if (health.FixesApplied.Count > 0)
+                    {
+                        Log($"   {p.Name} [Repairs]: {string.Join(", ", health.FixesApplied)}");
+                    }
+                    else if (!gradleChanged && !agpChanged)
+                    {
+                        Log($"   {p.Name}: Wrapper and project files verified & healthy.");
+                    }
+
+                    foreach (var w in health.Warnings)
+                    {
+                        Log($"   WARNING {p.Name}: {w}");
+                    }
 
                     if (VerifyCheck.IsChecked != true)
                     {
-                        p.Status = "Updated";
+                        p.Status = (gradleChanged || agpChanged || health.FixesApplied.Count > 0)
+                            ? "Updated & Verified"
+                            : "Verified (Ready)";
                         success++;
                         continue;
                     }
@@ -1217,12 +1244,12 @@ public partial class MainWindow : Window
                     }
                     else if (result == null)
                     {
-                        p.Status = "Updated (not built)";
+                        p.Status = "Verified (not built)";
                         success++;
                     }
                     else
                     {
-                        p.Status = "Updated, build OK";
+                        p.Status = "Verified, build OK";
                         success++;
                     }
                 }
@@ -1244,10 +1271,10 @@ public partial class MainWindow : Window
 
             SetProgress(100, "Done", $"{total} / {total}");
 
-            Log($"Done: {success} updated, {rolled} rolled back, {failed} failed.");
-            SetStatus($"Done: {success} updated, {rolled} rolled back, {failed} failed.",
+            Log($"Done: {success} verified/updated, {rolled} rolled back, {failed} failed.");
+            SetStatus($"Done: {success} verified/updated, {rolled} rolled back, {failed} failed.",
                 failed + rolled > 0 ? "WarningBrush" : "SuccessBrush");
-            ToastService.Show($"Update complete: {success} updated, {rolled} rolled back, {failed} failed.",
+            ToastService.Show($"Process complete: {success} verified/updated, {rolled} rolled back, {failed} failed.",
                 failed + rolled > 0 ? ToastKind.Warning : ToastKind.Success);
             PopulateVersionLists();
             RefreshGrid();
@@ -1604,9 +1631,10 @@ public partial class MainWindow : Window
     static string StatusBrush(string status) => status switch
     {
         "Will change" => "WarningBrush",
-        "Updating..." or "Building..." => "PrimaryBrush",
+        "Updating..." or "Building..." or "Checking..." => "PrimaryBrush",
         "Rolled back" or "Failed" or "Bad target" => "DangerBrush",
-        "Updated" or "Updated, build OK" or "Updated (not built)" or "Up to date" => "SuccessBrush",
+        "Updated" or "Updated, build OK" or "Updated (not built)" or "Up to date"
+            or "Updated & Verified" or "Verified (Ready)" or "Verified, build OK" or "Verified (not built)" => "SuccessBrush",
         _ => "TextMutedBrush"
     };
 
